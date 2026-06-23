@@ -1,0 +1,11 @@
+{
+  "color": {
+    "blue": {
+      "500": { "$type": "color", "$value": "#0D99FF" }
+    },
+    "gray": {
+      "900": { "$type": "color", "$value": "#1E1E1E" },
+      "50":  { "$type": "color", "$value": "#F5F5F5" }
+    }
+  }
+}

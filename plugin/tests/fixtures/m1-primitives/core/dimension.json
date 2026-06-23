@@ -1,0 +1,9 @@
+{
+  "space": {
+    "100": { "$type": "dimension", "$value": 8 },
+    "200": { "$type": "dimension", "$value": 16 }
+  },
+  "radius": {
+    "md": { "$type": "dimension", "$value": 8 }
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "name": "tokens-to-variables",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "watch": "node build.mjs --watch",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.tests.json"
+  },
+  "devDependencies": {
+    "@figma/plugin-typings": "^1.108.0",
+    "@types/node": "^26.0.0",
+    "esbuild": "^0.24.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  }
+}
