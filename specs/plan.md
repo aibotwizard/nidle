@@ -102,7 +102,7 @@ accurate Step 3 preview and (b) an easy dry-run path for tests.
 
 ### M1 — Walking skeleton (Upload + Primitives)
 
-1. Scaffold `manifest.json`, two-entry esbuild config, `pnpm` scripts.
+1. Scaffold `manifest.json`, two-entry esbuild config, `npm` scripts.
 2. Build the static UI shell matching the design asset — header,
    stepper, footer, scroll container, settings sheet (inert). Extract
    the CSS verbatim from the asset; rename `sc-for` / `sc-if` patterns
