@@ -32,6 +32,21 @@ export type UploadedFile = {
   json: unknown;
 };
 
+/** A DTCG alias value such as "{color.blue.500}". */
+export function isAliasValue(raw: unknown): raw is string {
+  return (
+    typeof raw === "string" &&
+    raw.length >= 3 &&
+    raw.startsWith("{") &&
+    raw.endsWith("}")
+  );
+}
+
+/** Extract the dot-separated path from an alias string `"{a.b.c}"` → `"a.b.c"`. */
+export function aliasPath(raw: string): string {
+  return raw.slice(1, -1).trim();
+}
+
 export function parseFiles(files: UploadedFile[]): ParseResult {
   const tokens: Token[] = [];
   const warnings: ParseResult["warnings"] = [];
@@ -87,12 +102,16 @@ function normalizeValue(
   trail: string[],
   warnings: ParseResult["warnings"],
 ): string | number | null {
+  // DTCG aliases are valid for any type — preserve them as-is so the
+  // resolver step can decide whether to keep or substitute them.
+  if (isAliasValue(raw)) return raw;
+
   if (type === "color") {
     if (typeof raw !== "string") {
       warnings.push({
         file,
         path: trail.join("/"),
-        reason: "color value must be a string (e.g. \"#0d99ff\")",
+        reason: "color value must be a string (e.g. \"#0d99ff\") or an alias",
       });
       return null;
     }
@@ -107,7 +126,7 @@ function normalizeValue(
     warnings.push({
       file,
       path: trail.join("/"),
-      reason: "dimension value must be a number or numeric string",
+      reason: "dimension value must be a number, numeric string, or alias",
     });
     return null;
   }
@@ -119,7 +138,7 @@ function normalizeValue(
     warnings.push({
       file,
       path: trail.join("/"),
-      reason: "number value must be numeric",
+      reason: "number value must be numeric or an alias",
     });
     return null;
   }

@@ -1,4 +1,4 @@
-import type { VariablePlan } from "../shared/mapping/toFigma.js";
+import type { MappingSettings, VariablePlan } from "../shared/mapping/toFigma.js";
 
 export type PlanError = {
   variable: string;
@@ -6,13 +6,23 @@ export type PlanError = {
   source: { file: string; path: string };
 };
 
+export type StoredSettings = Partial<MappingSettings>;
+
 export type ToCode =
   | { type: "applyPlan"; plan: VariablePlan }
+  | { type: "readSettings" }
+  | { type: "writeSettings"; settings: StoredSettings }
   | { type: "close" };
 
 export type ToUI =
   | { type: "progress"; pct: number; line: string; tone: LogTone }
-  | { type: "done"; created: number; errors: PlanError[] }
-  | { type: "error"; message: string };
+  | {
+      type: "done";
+      created: number;
+      updated: number;
+      errors: PlanError[];
+    }
+  | { type: "error"; message: string }
+  | { type: "settings"; settings: StoredSettings };
 
 export type LogTone = "dim" | "plain" | "accent" | "ok" | "err";

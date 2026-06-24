@@ -38,21 +38,36 @@ Figma. No editing tokens in Figma, no cloud sync, no telemetry.
 - **Zero network access** — the MVP manifest declares
   `networkAccess: ["none"]`. Nothing leaves Figma.
 
+### Added in M2 + M4
+
+- **Aliases** — `{color.blue.500}` references are resolved across files.
+  The settings sheet's *Reference handling* control switches between
+  **Keep as alias** (Figma variable-to-variable alias edges, preserving
+  the author's direct hop) and **Resolve to raw value** (substitute the
+  literal at the chain tip).
+- **Themes → modes** — sibling files in the same directory whose token
+  shapes match are folded into a single collection with one mode per
+  file. `semantic/light.json` + `semantic/dark.json` become the
+  `Semantic` collection with `Light` and `Dark` modes; alias edges are
+  written per mode.
+- **Three-collection layout** — `core/*` → **Primitives**,
+  `semantic/*` → **Semantic**, `components/*` → **Components**. Unknown
+  top-level folders fall back to Primitives with a warning.
+- **Group separator** — emit variable names with `/` or `.` between
+  groups (Figma renders both as nesting in the Variables panel).
+- **Update-existing toggle** — when on, re-imports match by
+  `(collection, name)` and overwrite values; when off, existing
+  variables are preserved and the skip is logged per token.
+- **Settings persistence** — every setting above is stored in Figma's
+  `clientStorage` and re-loaded on plugin boot.
+
 ### Not in the MVP (planned)
 
 The full roadmap is in [specs/constitution.md](specs/constitution.md) §2.
-Each item there is tagged **[implemented]** or **[planned]**. Notable
-**[planned]** items:
+Notable **[planned]** items:
 
 - GitLab source — connect to a self-hosted GitLab repo and pull tokens
   from a branch.
-- Settings sheet — reference handling (alias vs resolved), group
-  separator (`/` vs `.`), update-existing toggle, theme→mode mapping.
-- Aliases and multi-theme support — resolve `{color.blue.500}`
-  references and surface `light.json` / `dark.json` as **modes** in a
-  Semantic collection.
-- Three-collection layout — `core/` → Primitives, `semantic/` →
-  Semantic, `components/` → Components.
 
 ---
 
@@ -138,8 +153,10 @@ number}`. Example:
 }
 ```
 
-Aliases (`{color.blue.500}`) are not resolved in the MVP — they're a
-**[planned]** item for the next milestone.
+Aliases (`{color.blue.500}`) are resolved across the upload. With
+*Reference handling* set to **Keep as alias** the resulting Figma
+variable carries an alias edge to its target; with **Resolve to raw
+value** the literal at the chain tip is substituted.
 
 ---
 

@@ -1,0 +1,47 @@
+{
+  "tokens": 9,
+  "collections": [
+    { "name": "Primitives", "modes": ["Value"], "variableCount": 3 },
+    { "name": "Semantic",   "modes": ["Light", "Dark"], "variableCount": 3 }
+  ],
+  "primitives": {
+    "color/blue/500": { "type": "COLOR", "value": "#0D99FF" },
+    "color/gray/50":  { "type": "COLOR", "value": "#F5F5F5" },
+    "color/gray/900": { "type": "COLOR", "value": "#1E1E1E" }
+  },
+  "semantic": {
+    "surface/background": {
+      "type": "COLOR",
+      "alias": {
+        "Light": { "targetCollection": "Primitives", "targetName": "color/gray/50" },
+        "Dark":  { "targetCollection": "Primitives", "targetName": "color/gray/900" }
+      },
+      "resolved": {
+        "Light": "#F5F5F5",
+        "Dark":  "#1E1E1E"
+      }
+    },
+    "surface/foreground": {
+      "type": "COLOR",
+      "alias": {
+        "Light": { "targetCollection": "Primitives", "targetName": "color/gray/900" },
+        "Dark":  { "targetCollection": "Primitives", "targetName": "color/gray/50" }
+      },
+      "resolved": {
+        "Light": "#1E1E1E",
+        "Dark":  "#F5F5F5"
+      }
+    },
+    "accent/primary": {
+      "type": "COLOR",
+      "alias": {
+        "Light": { "targetCollection": "Primitives", "targetName": "color/blue/500" },
+        "Dark":  { "targetCollection": "Primitives", "targetName": "color/blue/500" }
+      },
+      "resolved": {
+        "Light": "#0D99FF",
+        "Dark":  "#0D99FF"
+      }
+    }
+  }
+}

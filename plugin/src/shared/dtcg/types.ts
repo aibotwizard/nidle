@@ -11,11 +11,13 @@ export type DtcgGroup = {
 };
 
 export type Token = {
-  /** Slash-joined path, e.g. "color/blue/500". */
+  /** Slash-joined path inside the file, e.g. "color/blue/500". */
   name: string;
   type: DtcgType;
+  /** Either a literal value (string for color, number for dimension/number)
+   *  or an alias reference `{color.blue.500}` left unresolved. */
   value: string | number;
-  /** Source file this token came from, for error messages. */
+  /** Source file this token came from. */
   file: string;
 };
 

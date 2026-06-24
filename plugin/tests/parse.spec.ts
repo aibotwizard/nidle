@@ -2,7 +2,8 @@ import { describe, it, expect } from "vitest";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { parseFiles, hexToRgba, type UploadedFile } from "../src/shared/dtcg/parse.js";
-import { planForPrimitives } from "../src/shared/mapping/toFigma.js";
+import { DEFAULT_SETTINGS, planForFiles, type FileTokens } from "../src/shared/mapping/toFigma.js";
+import type { Token } from "../src/shared/dtcg/types.js";
 
 function loadFixture(name: string): { uploads: UploadedFile[]; expected: any } {
   const base = join(__dirname, "fixtures", name);
@@ -41,25 +42,32 @@ describe("DTCG parse — m1-primitives fixture", () => {
   });
 });
 
-describe("planForPrimitives", () => {
+describe("planForFiles — m1 primitives fixture", () => {
   const { uploads, expected } = loadFixture("m1-primitives");
-  const { tokens } = parseFiles(uploads);
-  const plan = planForPrimitives(tokens);
+  const fts: FileTokens[] = uploads.map((u) => {
+    const tokens: Token[] = parseFiles([u]).tokens;
+    return { file: u.path, tokens };
+  });
+  const plan = planForFiles(fts, DEFAULT_SETTINGS);
 
   it("produces one collection with one mode", () => {
     expect(plan.collections.length).toBe(expected.collections);
     expect(plan.collections[0].name).toBe("Primitives");
-    expect(plan.collections[0].mode).toBe("Value");
+    expect(plan.collections[0].modes).toEqual(["Value"]);
   });
 
   it("emits one variable op per token, color → COLOR and dimension → FLOAT", () => {
     expect(plan.variables.length).toBe(expected.tokens);
     const colorOp = plan.variables.find((v) => v.name === "color/blue/500")!;
     expect(colorOp.resolvedType).toBe("COLOR");
-    expect(colorOp.value).toBe("#0D99FF");
+    expect(colorOp.values).toEqual([
+      { mode: "Value", value: { kind: "literal", value: "#0D99FF" } },
+    ]);
     const numOp = plan.variables.find((v) => v.name === "space/200")!;
     expect(numOp.resolvedType).toBe("FLOAT");
-    expect(numOp.value).toBe(16);
+    expect(numOp.values).toEqual([
+      { mode: "Value", value: { kind: "literal", value: 16 } },
+    ]);
   });
 });
 

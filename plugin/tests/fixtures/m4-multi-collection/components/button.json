@@ -1,0 +1,6 @@
+{
+  "button": {
+    "background": { "$type": "color", "$value": "{accent.primary}" },
+    "padding": { "$type": "dimension", "$value": "{space.100}" }
+  }
+}

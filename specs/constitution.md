@@ -52,23 +52,23 @@ Status legend: **[implemented]** shipped in the current MVP ·
   `dimension`, `number`.
 - **[implemented]** Emit one Figma collection ("Primitives") with a
   single mode, no aliases.
-- **[planned]** Settings sheet — not part of the MVP. Settings button is
-  hidden until M2.
+- **[implemented]** Settings sheet — shipped in M2.
 - **[planned]** GitLab source tab — not part of the MVP. The source
   picker shows Upload only until M3.
 
 **Done when:** a user can upload `core/color.json`, click through 4 steps,
 and see Figma variables created in the Primitives collection.
 
-### M2 — Aliases & themes — **[planned]**
+### M2 — Aliases & themes — **[implemented]**
 
-- **[planned]** Resolve `{group.token}` references within the upload.
-- **[planned]** Reference handling toggle (`alias` ↔ `resolve`) wired to
-  settings.
-- **[planned]** Detect multi-file themes (e.g. `light.json` /
+- **[implemented]** Resolve `{group.token}` references within the upload.
+- **[implemented]** Reference handling toggle (`alias` ↔ `resolve`) wired to
+  settings, persisted in `clientStorage`.
+- **[implemented]** Detect multi-file themes (e.g. `light.json` /
   `dark.json`) and surface them as **modes** inside a Semantic
-  collection.
-- **[planned]** Theme → mode mapping UI in the settings sheet.
+  collection. Sibling files with matching (path, type) shape become modes.
+- **[implemented]** Theme → mode mapping UI in the settings sheet (read-only
+  surfacing of detected themes).
 
 **Done when:** Semantic collection with Light + Dark modes is created, and
 toggling reference handling visibly changes the preview and the output.
@@ -85,24 +85,36 @@ toggling reference handling visibly changes the preview and the output.
 **Done when:** a user with a PAT can connect to a locally hosted GitLab,
 pick a subfolder, and reach Step 2 with the file tree populated.
 
-### M4 — Multi-collection layout & update semantics — **[planned]**
+### M4 — Multi-collection layout & update semantics — **[implemented]**
 
-- **[planned]** Three-collection layout: **Primitives**, **Semantic**,
+- **[implemented]** Three-collection layout: **Primitives**, **Semantic**,
   **Components**, driven by folder convention (`core/`, `semantic/`,
-  `components/`).
-- **[planned]** Group separator setting (`slash` ↔ `dot`) applied to
-  variable names.
-- **[planned]** "Update existing variables" toggle — match by name,
-  overwrite values in place rather than duplicating.
+  `components/`). Unknown top-level folders fall back to Primitives with a
+  warning.
+- **[implemented]** Group separator setting (`slash` ↔ `dot`) applied to
+  variable names, persisted in `clientStorage`.
+- **[implemented]** "Update existing variables" toggle — match by
+  `(collection, name)`, overwrite values in place rather than duplicating.
+  When off, an existing variable is left alone and the operation is logged
+  as a per-token skip.
 
 **Done when:** re-running an import against an existing file updates
 variables instead of creating new ones.
 
-### M5 — Polish & resilience — **[planned]**
+### M5 — Polish & resilience — **[implemented]**
 
-- **[planned]** Streaming progress + console log during import.
-- **[planned]** Per-token error reporting (which token, which file, why).
-- **[planned]** Settings persisted across runs.
+Most M5 items shipped incidentally during M1/M2 because the underlying
+mechanics (live progress messages, plan-op provenance) were already in
+the architecture. M5's status is recorded here for completeness.
+
+- **[implemented]** Streaming progress + console log during import
+  (shipped in M1; the sandbox posts `{type:'progress', pct, line, tone}`
+  per batch and the UI streams them into the console column on Step 4).
+- **[implemented]** Per-token error reporting (shipped in M1; every
+  `PlanError` carries `{ variable, reason, source: { file, path } }`).
+- **[implemented]** Settings persisted across runs (shipped in M2 via
+  the `readSettings`/`writeSettings` message pair against
+  `figma.clientStorage`).
 
 ---
 

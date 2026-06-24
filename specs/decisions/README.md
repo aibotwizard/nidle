@@ -46,3 +46,4 @@ references the old one and flip the old one's status to
 | [0006](0006-mvp-upload-only.md) | MVP scope: upload-only, no settings, no GitLab | accepted | PO |
 | [0007](0007-three-agent-team.md) | Three-agent team: AO, UX, PO | accepted | PO |
 | [0008](0008-network-access-none-in-mvp.md) | `networkAccess: ["none"]` in the MVP manifest | accepted (M3 amendment pending) | AO, PO |
+| [0009](0009-keepalias-preserves-direct-hop.md) | `keepAlias` preserves the author's direct hop, not the chain tip | accepted | AO, PO |

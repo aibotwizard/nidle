@@ -1,0 +1,22 @@
+{
+  "tokens": 9,
+  "collections": [
+    { "name": "Primitives", "modes": ["Value"], "variableCount": 4 },
+    { "name": "Semantic",   "modes": ["Value"], "variableCount": 3 },
+    { "name": "Components", "modes": ["Value"], "variableCount": 2 }
+  ],
+  "byName": {
+    "color/blue/500":     { "collection": "Primitives", "type": "COLOR", "literal": "#0D99FF" },
+    "color/gray/900":     { "collection": "Primitives", "type": "COLOR", "literal": "#1E1E1E" },
+    "space/100":          { "collection": "Primitives", "type": "FLOAT", "literal": 8 },
+    "space/200":          { "collection": "Primitives", "type": "FLOAT", "literal": 16 },
+    "surface/background": { "collection": "Semantic",   "type": "COLOR", "aliasName": "color/gray/900", "aliasCollection": "Primitives" },
+    "accent/primary":     { "collection": "Semantic",   "type": "COLOR", "aliasName": "color/blue/500", "aliasCollection": "Primitives" },
+    "spacing/page":       { "collection": "Semantic",   "type": "FLOAT", "aliasName": "space/200",      "aliasCollection": "Primitives" },
+    "button/background":  { "collection": "Components", "type": "COLOR", "aliasName": "accent/primary", "aliasCollection": "Semantic" },
+    "button/padding":     { "collection": "Components", "type": "FLOAT", "aliasName": "space/100",      "aliasCollection": "Primitives" }
+  },
+  "dotSeparator": {
+    "surface.background": { "aliasName": "color.gray.900" }
+  }
+}
