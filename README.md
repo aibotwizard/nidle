@@ -1,4 +1,4 @@
-# Boppli — Tokens → Variables
+# Nidle — W3C Design Tokens → Figma Variables Plugin
 
 A Figma plugin that imports **W3C Design Tokens (DTCG · 2025.10)** from a
 folder of JSON files and creates the matching **Figma variables** in your
