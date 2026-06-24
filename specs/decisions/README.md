@@ -47,3 +47,5 @@ references the old one and flip the old one's status to
 | [0007](0007-three-agent-team.md) | Three-agent team: AO, UX, PO | accepted | PO |
 | [0008](0008-network-access-none-in-mvp.md) | `networkAccess: ["none"]` in the MVP manifest | accepted (M3 amendment pending) | AO, PO |
 | [0009](0009-keepalias-preserves-direct-hop.md) | `keepAlias` preserves the author's direct hop, not the chain tip | accepted | AO, PO |
+| [0010](0010-async-writer-yields-per-progress-tick.md) | Async writer yields to the event loop on each progress tick | accepted | AO |
+| [0011](0011-dimensions-coerced-to-px-rem-base-16.md) | Dimensions are coerced to px; 1rem = 16px | accepted | AO, PO |

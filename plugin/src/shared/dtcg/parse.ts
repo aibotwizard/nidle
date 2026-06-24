@@ -66,6 +66,39 @@ export function parseFiles(files: UploadedFile[]): ParseResult {
   return { tokens, warnings };
 }
 
+/**
+ * Tokens Studio exports a single combined JSON where each top-level key is a
+ * named token set (e.g. "core", "SchemeStatic/Light"). Aliases are authored
+ * relative to those set names — e.g. `{post.core.color.sandgrey.002}` refers
+ * to `post/core/color/sandgrey/002` inside the "core" set, not
+ * `core/post/core/color/sandgrey/002` prefixed by the set key.
+ *
+ * Detected by the presence of `$metadata.tokenSetOrder` or `$themes` at the
+ * root. Each set is returned as its own virtual UploadedFile so that
+ * parseFiles() produces token names without the set-key prefix.
+ *
+ * Plain W3C DTCG files (no `$themes`/`$metadata`) are returned unchanged.
+ */
+export function expandTokensStudio(f: UploadedFile): UploadedFile[] {
+  const root = f.json as Record<string, unknown>;
+  const isTokensStudio =
+    (Array.isArray(root.$themes) && root.$themes.length > 0) ||
+    (root.$metadata != null &&
+      typeof root.$metadata === "object" &&
+      Array.isArray((root.$metadata as Record<string, unknown>).tokenSetOrder));
+  if (!isTokensStudio) return [f];
+
+  const meta = root.$metadata as Record<string, unknown> | undefined;
+  const setOrder: string[] =
+    Array.isArray(meta?.tokenSetOrder)
+      ? (meta!.tokenSetOrder as string[])
+      : Object.keys(root).filter((k) => !k.startsWith("$"));
+
+  return setOrder
+    .filter((key) => key in root && !key.startsWith("$"))
+    .map((key) => ({ path: key, json: root[key] }));
+}
+
 function walk(
   node: DtcgGroup,
   trail: string[],
@@ -118,15 +151,13 @@ function normalizeValue(
     return raw;
   }
   if (type === "dimension") {
-    if (typeof raw === "number") return raw;
-    if (typeof raw === "string") {
-      const n = parseFloat(raw);
-      if (Number.isFinite(n)) return n;
-    }
+    const px = dimensionToPx(raw);
+    if (px !== null) return px;
     warnings.push({
       file,
       path: trail.join("/"),
-      reason: "dimension value must be a number, numeric string, or alias",
+      reason:
+        "dimension value must be a number or string with unit px / rem / em / unitless (ADR-0011)",
     });
     return null;
   }
@@ -145,13 +176,41 @@ function normalizeValue(
   return null;
 }
 
-/** Parse a hex color (#rgb, #rrggbb, #rrggbbaa) into Figma's {r,g,b,a} 0–1 floats. */
-export function hexToRgba(hex: string): {
-  r: number;
-  g: number;
-  b: number;
-  a: number;
-} | null {
+export type Rgba = { r: number; g: number; b: number; a: number };
+
+/** 1rem = REM_BASE_PX. Figma variables only store px (ADR-0011). */
+export const REM_BASE_PX = 16;
+
+/**
+ * Coerce a DTCG dimension `$value` into a px number.
+ * Accepts: number; "16"; "16px"; "1rem"; "1.5em" (case-insensitive, optional
+ * whitespace between number and unit). Returns null for anything else.
+ */
+export function dimensionToPx(raw: unknown): number | null {
+  if (typeof raw === "number") return Number.isFinite(raw) ? raw : null;
+  if (typeof raw !== "string") return null;
+  const m = raw.trim().match(/^(-?\d*\.?\d+)\s*(px|rem|em)?$/i);
+  if (!m) return null;
+  const n = parseFloat(m[1]!);
+  if (!Number.isFinite(n)) return null;
+  const unit = (m[2] ?? "").toLowerCase();
+  return unit === "rem" || unit === "em" ? n * REM_BASE_PX : n;
+}
+
+/**
+ * Parse a CSS color string into Figma's {r,g,b,a} 0–1 floats.
+ * Accepts hex (#rgb, #rrggbb, #rrggbbaa) and CSS rgb()/rgba()
+ * with comma or whitespace separators. Returns null on anything else.
+ */
+export function parseColor(input: string): Rgba | null {
+  const s = input.trim();
+  if (s.startsWith("#")) return hexToRgba(s);
+  if (/^rgba?\s*\(/i.test(s)) return rgbFuncToRgba(s);
+  return null;
+}
+
+/** @deprecated use parseColor — kept for tests that exercise hex specifically. */
+export const hexToRgba = (hex: string): Rgba | null => {
   let h = hex.trim();
   if (h.startsWith("#")) h = h.slice(1);
   if (h.length === 3) {
@@ -167,4 +226,43 @@ export function hexToRgba(hex: string): {
   const a = h.length === 8 ? parseInt(h.slice(6, 8), 16) : 255;
   if ([r, g, b, a].some((n) => Number.isNaN(n))) return null;
   return { r: r / 255, g: g / 255, b: b / 255, a: a / 255 };
+};
+
+function rgbFuncToRgba(s: string): Rgba | null {
+  const open = s.indexOf("(");
+  const close = s.lastIndexOf(")");
+  if (open < 0 || close <= open) return null;
+  const parts = s
+    .slice(open + 1, close)
+    .split(/[,\s/]+/)
+    .map((p) => p.trim())
+    .filter((p) => p.length > 0);
+  if (parts.length !== 3 && parts.length !== 4) return null;
+  const ch = parts.slice(0, 3).map(parseChannel);
+  if (ch.some((n) => n === null)) return null;
+  const a = parts.length === 4 ? parseAlpha(parts[3]!) : 1;
+  if (a === null) return null;
+  return { r: ch[0]!, g: ch[1]!, b: ch[2]!, a };
+}
+
+function parseChannel(p: string): number | null {
+  if (p.endsWith("%")) {
+    const n = parseFloat(p.slice(0, -1));
+    return Number.isFinite(n) ? clamp01(n / 100) : null;
+  }
+  const n = parseFloat(p);
+  return Number.isFinite(n) ? clamp01(n / 255) : null;
+}
+
+function parseAlpha(p: string): number | null {
+  if (p.endsWith("%")) {
+    const n = parseFloat(p.slice(0, -1));
+    return Number.isFinite(n) ? clamp01(n / 100) : null;
+  }
+  const n = parseFloat(p);
+  return Number.isFinite(n) ? clamp01(n) : null;
+}
+
+function clamp01(n: number): number {
+  return n < 0 ? 0 : n > 1 ? 1 : n;
 }

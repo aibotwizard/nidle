@@ -1,7 +1,5 @@
-import { parseFiles, type UploadedFile } from "../shared/dtcg/parse.js";
 import {
   basenameMode,
-  DEFAULT_SETTINGS,
   planForFiles,
   type CollectionName,
   type FileTokens,
@@ -13,13 +11,12 @@ import {
   type VariablePlan,
 } from "../shared/mapping/toFigma.js";
 import type { Token } from "../shared/dtcg/types.js";
-import type {
-  LogTone,
-  PlanError,
-  StoredSettings,
-  ToCode,
-  ToUI,
-} from "../code/messages.js";
+import type { LogTone, PlanError, ToCode } from "../code/messages.js";
+import { createSandboxTransport } from "./transport/sandboxTransport.js";
+import { createSettingsStore } from "./settings/settingsStore.js";
+import { createPostMessageStorage } from "./settings/postMessageStorage.js";
+import { fromUploads } from "../shared/intake/tokenIntake.js";
+import { readJsonFiles } from "./intake/fileReader.js";
 
 type Step = 1 | 2 | 3 | 4;
 
@@ -36,7 +33,6 @@ type LogLine = { text: string; tone: LogTone };
 type State = {
   step: Step;
   files: FileMeta[];
-  settings: MappingSettings;
   settingsOpen: boolean;
   importing: boolean;
   done: boolean;
@@ -45,16 +41,24 @@ type State = {
   result?: { created: number; updated: number; errors: PlanError[] };
 };
 
+const transport = createSandboxTransport();
+const settingsStorage = createPostMessageStorage(transport);
+const settingsStore = createSettingsStore(settingsStorage);
+
 const state: State = {
   step: 1,
   files: [],
-  settings: { ...DEFAULT_SETTINGS },
   settingsOpen: false,
   importing: false,
   done: false,
   progress: 0,
   log: [],
 };
+
+settingsStore.subscribe(() => {
+  planCache = null;
+  render();
+});
 
 const $ = (id: string) => document.getElementById(id)!;
 
@@ -70,7 +74,19 @@ function setState(patch: Partial<State>): void {
 }
 
 function appendLog(text: string, tone: LogTone): void {
-  state.log.push({ text, tone });
+  setState({ log: [...state.log, { text, tone }] });
+}
+
+function clearLog(): void {
+  setState({ log: [] });
+}
+
+function toggleFileSelection(path: string): void {
+  setState({
+    files: state.files.map((f) =>
+      f.path === path ? { ...f, selected: !f.selected } : f,
+    ),
+  });
 }
 
 function selectedFiles(): FileMeta[] {
@@ -79,17 +95,18 @@ function selectedFiles(): FileMeta[] {
 
 function computePlan(): VariablePlan {
   const sel = selectedFiles();
+  const settings = settingsStore.get();
   const key =
     sel.map((f) => f.path).join("|") +
     "::" +
-    state.settings.refMode +
+    settings.refMode +
     "/" +
-    state.settings.separator +
+    settings.separator +
     "/" +
-    (state.settings.updateExisting ? "u" : "c");
+    (settings.updateExisting ? "u" : "c");
   if (planCache && planCache.key === key) return planCache.plan;
   const fts: FileTokens[] = sel.map((f) => ({ file: f.path, tokens: f.tokens }));
-  const plan = planForFiles(fts, state.settings);
+  const plan = planForFiles(fts, settings);
   planCache = { key, plan };
   return plan;
 }
@@ -97,27 +114,8 @@ function computePlan(): VariablePlan {
 // ----- upload handling -----
 
 async function handleFiles(fileList: FileList | File[]): Promise<void> {
-  const jsonFiles = Array.from(fileList).filter((f) => f.name.endsWith(".json"));
-  const texts = await Promise.all(jsonFiles.map((f) => f.text()));
-
-  const uploads: UploadedFile[] = [];
-  const parseFailures: { path: string; reason: string }[] = [];
-  for (let i = 0; i < jsonFiles.length; i++) {
-    const path = relativePath(jsonFiles[i]!);
-    try {
-      uploads.push({ path, json: JSON.parse(texts[i]!) });
-    } catch (e) {
-      parseFailures.push({
-        path,
-        reason: `invalid JSON: ${e instanceof Error ? e.message : String(e)}`,
-      });
-    }
-  }
-
-  const { tokens, warnings } = parseFiles(uploads);
-  const tokensByFile = new Map<string, Token[]>();
-  for (const u of uploads) tokensByFile.set(u.path, []);
-  for (const t of tokens) tokensByFile.get(t.file)?.push(t);
+  const { uploads, parseFailures } = await readJsonFiles(fileList);
+  const { files: fileTokens, warnings } = fromUploads(uploads);
 
   // Surface parse-time warnings (unsupported $type, malformed values) so the
   // user sees them on Step 1 — they won't otherwise show until Step 3.
@@ -128,30 +126,21 @@ async function handleFiles(fileList: FileList | File[]): Promise<void> {
     appendLog(`${f.path} — ${f.reason}`, "err");
   }
 
-  const out: FileMeta[] = uploads.map((u) => {
-    const parts = u.path.split("/");
+  const out: FileMeta[] = fileTokens.map((ft) => {
+    const parts = ft.file.split("/");
     const name = parts[parts.length - 1]!;
     const folder = parts.length > 1 ? parts.slice(0, -1).join("/") : "(root)";
     return {
-      path: u.path,
+      path: ft.file,
       name,
       folder,
-      tokens: tokensByFile.get(u.path) ?? [],
+      tokens: ft.tokens,
       selected: true,
     };
   });
 
   out.sort((a, b) => (a.folder + a.name).localeCompare(b.folder + b.name));
   setState({ files: out });
-}
-
-function relativePath(f: File): string {
-  const rel = (f as File & { webkitRelativePath?: string }).webkitRelativePath;
-  if (rel && rel.length > 0) {
-    const parts = rel.split("/");
-    return parts.length > 1 ? parts.slice(1).join("/") : rel;
-  }
-  return f.name;
 }
 
 // ----- import flow -----
@@ -169,23 +158,33 @@ function startImport(): void {
     });
     return;
   }
-  state.log = [];
-  appendLog(`Sending ${plan.variables.length} variables to Figma…`, "dim");
-  setState({ step: 4, importing: true, done: false, progress: 0 });
+  clearLog();
+  setState({
+    step: 4,
+    importing: true,
+    done: false,
+    progress: 0,
+    log: [{ text: `Sending ${plan.variables.length} variables to Figma…`, tone: "dim" }],
+  });
   postCode({ type: "applyPlan", plan });
 }
 
 function postCode(msg: ToCode): void {
-  parent.postMessage({ pluginMessage: msg }, "*");
+  transport.postCode(msg);
 }
 
-window.addEventListener("message", (e) => {
-  const msg = (e.data && e.data.pluginMessage) as ToUI | undefined;
-  if (!msg) return;
+transport.addMessageListener((msg) => {
   if (msg.type === "progress") {
     appendLog(msg.line, msg.tone);
     setState({ progress: msg.pct });
   } else if (msg.type === "done") {
+    const ERROR_PREVIEW = 12;
+    for (const err of msg.errors.slice(0, ERROR_PREVIEW)) {
+      appendLog(`${err.source.file} · ${err.variable} — ${err.reason}`, "err");
+    }
+    if (msg.errors.length > ERROR_PREVIEW) {
+      appendLog(`…and ${msg.errors.length - ERROR_PREVIEW} more`, "err");
+    }
     appendLog(
       `✓ Imported ${msg.created} created, ${msg.updated} updated` +
         (msg.errors.length ? ` (${msg.errors.length} errors)` : ""),
@@ -204,21 +203,9 @@ window.addEventListener("message", (e) => {
   } else if (msg.type === "error") {
     appendLog(`Error: ${msg.message}`, "err");
     setState({ importing: false, done: true });
-  } else if (msg.type === "settings") {
-    const merged: MappingSettings = {
-      ...DEFAULT_SETTINGS,
-      ...(msg.settings ?? {}),
-    };
-    setState({ settings: merged });
   }
+  // `settings` messages are handled by createPostMessageStorage.
 });
-
-postCode({ type: "readSettings" });
-
-function persistSettings(): void {
-  const s: StoredSettings = { ...state.settings };
-  postCode({ type: "writeSettings", settings: s });
-}
 
 // ----- rendering -----
 
@@ -427,11 +414,7 @@ function renderStep2(): HTMLElement {
         <div class="name mono">${f.name}</div>
         <div class="count">${f.tokens.length}</div>
       `;
-      row.onclick = () => {
-        f.selected = !f.selected;
-        planCache = null;
-        render();
-      };
+      row.onclick = () => toggleFileSelection(f.path);
       list.appendChild(row);
     }
     block.appendChild(list);
@@ -732,12 +715,11 @@ function renderSettingsSheet(): HTMLElement {
           { id: "keepAlias", label: "Keep as alias" },
           { id: "resolve", label: "Resolve to raw value" },
         ],
-        state.settings.refMode,
+        settingsStore.get().refMode,
         (id) => {
-          state.settings.refMode = id as MappingSettings["refMode"];
-          persistSettings();
-          planCache = null;
-          render();
+          settingsStore.update({
+            refMode: id as MappingSettings["refMode"],
+          });
         },
       ),
     ),
@@ -752,12 +734,11 @@ function renderSettingsSheet(): HTMLElement {
           { id: "slash", label: "/  Slash" },
           { id: "dot", label: ".  Dot" },
         ],
-        state.settings.separator,
+        settingsStore.get().separator,
         (id) => {
-          state.settings.separator = id as MappingSettings["separator"];
-          persistSettings();
-          planCache = null;
-          render();
+          settingsStore.update({
+            separator: id as MappingSettings["separator"],
+          });
         },
       ),
     ),
@@ -767,11 +748,8 @@ function renderSettingsSheet(): HTMLElement {
     settingsRow(
       "Update existing variables",
       "Match by (collection, name) and overwrite values in place. When off, re-imports leave existing variables untouched.",
-      toggle(state.settings.updateExisting, (v) => {
-        state.settings.updateExisting = v;
-        persistSettings();
-        planCache = null;
-        render();
+      toggle(settingsStore.get().updateExisting, (v) => {
+        settingsStore.update({ updateExisting: v });
       }),
     ),
   );

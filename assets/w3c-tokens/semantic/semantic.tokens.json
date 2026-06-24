@@ -1,0 +1,60 @@
+{
+  "$description": "Semantic tokens — role-based aliases over primitives. Components consume these, never primitives directly.",
+  "color": {
+    "background": {
+      "default":  { "$type": "color", "$value": "{color.neutral.0}" },
+      "subtle":   { "$type": "color", "$value": "{color.neutral.50}" },
+      "muted":    { "$type": "color", "$value": "{color.neutral.100}" },
+      "inverse":  { "$type": "color", "$value": "{color.neutral.900}" }
+    },
+    "text": {
+      "default":  { "$type": "color", "$value": "{color.neutral.900}" },
+      "muted":    { "$type": "color", "$value": "{color.neutral.500}" },
+      "inverse":  { "$type": "color", "$value": "{color.neutral.0}" },
+      "onAccent": { "$type": "color", "$value": "{color.neutral.0}" }
+    },
+    "border": {
+      "default": { "$type": "color", "$value": "{color.neutral.200}" },
+      "strong":  { "$type": "color", "$value": "{color.neutral.400}" },
+      "focus":   { "$type": "color", "$value": "{color.blue.500}" }
+    },
+    "accent": {
+      "default": { "$type": "color", "$value": "{color.blue.500}" },
+      "hover":   { "$type": "color", "$value": "{color.blue.600}" },
+      "active":  { "$type": "color", "$value": "{color.blue.700}" }
+    },
+    "status": {
+      "success": { "$type": "color", "$value": "{color.green.500}" },
+      "danger":  { "$type": "color", "$value": "{color.red.500}" },
+      "warning": { "$type": "color", "$value": "{color.amber.500}" }
+    }
+  },
+  "spacing": {
+    "xs": { "$type": "dimension", "$value": "{size.2}" },
+    "sm": { "$type": "dimension", "$value": "{size.3}" },
+    "md": { "$type": "dimension", "$value": "{size.5}" },
+    "lg": { "$type": "dimension", "$value": "{size.7}" },
+    "xl": { "$type": "dimension", "$value": "{size.9}" }
+  },
+  "radius": {
+    "control":   { "$type": "dimension", "$value": "{radius.md}" },
+    "container": { "$type": "dimension", "$value": "{radius.lg}" }
+  },
+  "font": {
+    "body": {
+      "size":       { "$type": "dimension", "$value": "{fontSize.md}" },
+      "weight":     { "$type": "number",    "$value": "{fontWeight.regular}" },
+      "lineHeight": { "$type": "number",    "$value": "{lineHeight.normal}" }
+    },
+    "label": {
+      "size":       { "$type": "dimension", "$value": "{fontSize.sm}" },
+      "weight":     { "$type": "number",    "$value": "{fontWeight.medium}" },
+      "lineHeight": { "$type": "number",    "$value": "{lineHeight.tight}" }
+    },
+    "heading": {
+      "size":       { "$type": "dimension", "$value": "{fontSize.xl}" },
+      "weight":     { "$type": "number",    "$value": "{fontWeight.bold}" },
+      "lineHeight": { "$type": "number",    "$value": "{lineHeight.tight}" }
+    }
+  }
+}

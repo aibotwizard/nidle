@@ -1,12 +1,20 @@
-import type { MappingSettings, VariablePlan } from "../shared/mapping/toFigma.js";
+import type { VariablePlan } from "../shared/mapping/toFigma.js";
+import type { LogTone, WriteError } from "../shared/writer/types.js";
 
-export type PlanError = {
-  variable: string;
-  reason: string;
-  source: { file: string; path: string };
-};
+/**
+ * Wire-level shape of a per-token error. Matches WriteError exactly —
+ * the alias keeps the message type self-documenting at the boundary.
+ */
+export type PlanError = WriteError;
 
-export type StoredSettings = Partial<MappingSettings>;
+/**
+ * Persisted settings payload. Defined here (not imported from
+ * ui/settings/types) so the sandbox doesn't need to know about UI-side
+ * modules.
+ */
+export type StoredSettings = Partial<
+  import("../shared/mapping/toFigma.js").MappingSettings
+>;
 
 export type ToCode =
   | { type: "applyPlan"; plan: VariablePlan }
@@ -25,4 +33,4 @@ export type ToUI =
   | { type: "error"; message: string }
   | { type: "settings"; settings: StoredSettings };
 
-export type LogTone = "dim" | "plain" | "accent" | "ok" | "err";
+export type { LogTone } from "../shared/writer/types.js";

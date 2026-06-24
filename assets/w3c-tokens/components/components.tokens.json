@@ -1,0 +1,87 @@
+{
+  "$description": "Component tokens — bound to semantic tokens. Components reference only this layer.",
+  "button": {
+    "primary": {
+      "background": {
+        "default": { "$type": "color", "$value": "{color.accent.default}" },
+        "hover":   { "$type": "color", "$value": "{color.accent.hover}" },
+        "active":  { "$type": "color", "$value": "{color.accent.active}" }
+      },
+      "text":   { "$type": "color", "$value": "{color.text.onAccent}" },
+      "border": { "$type": "color", "$value": "{color.accent.default}" }
+    },
+    "secondary": {
+      "background": {
+        "default": { "$type": "color", "$value": "{color.background.default}" },
+        "hover":   { "$type": "color", "$value": "{color.background.subtle}" },
+        "active":  { "$type": "color", "$value": "{color.background.muted}" }
+      },
+      "text":   { "$type": "color", "$value": "{color.text.default}" },
+      "border": { "$type": "color", "$value": "{color.border.strong}" }
+    },
+    "danger": {
+      "background": { "$type": "color", "$value": "{color.status.danger}" },
+      "text":       { "$type": "color", "$value": "{color.text.onAccent}" }
+    },
+    "size": {
+      "paddingX":   { "$type": "dimension", "$value": "{spacing.md}" },
+      "paddingY":   { "$type": "dimension", "$value": "{spacing.sm}" },
+      "radius":     { "$type": "dimension", "$value": "{radius.control}" },
+      "fontSize":   { "$type": "dimension", "$value": "{font.label.size}" },
+      "fontWeight": { "$type": "number",    "$value": "{font.label.weight}" }
+    }
+  },
+  "card": {
+    "background": { "$type": "color",     "$value": "{color.background.default}" },
+    "border":     { "$type": "color",     "$value": "{color.border.default}" },
+    "radius":     { "$type": "dimension", "$value": "{radius.container}" },
+    "padding":    { "$type": "dimension", "$value": "{spacing.lg}" },
+    "gap":        { "$type": "dimension", "$value": "{spacing.md}" },
+    "title": {
+      "size":   { "$type": "dimension", "$value": "{font.heading.size}" },
+      "weight": { "$type": "number",    "$value": "{font.heading.weight}" }
+    },
+    "body": {
+      "size":   { "$type": "dimension", "$value": "{font.body.size}" },
+      "weight": { "$type": "number",    "$value": "{font.body.weight}" }
+    }
+  },
+  "input": {
+    "background": {
+      "default":  { "$type": "color", "$value": "{color.background.default}" },
+      "disabled": { "$type": "color", "$value": "{color.background.muted}" }
+    },
+    "text": {
+      "default":     { "$type": "color", "$value": "{color.text.default}" },
+      "placeholder": { "$type": "color", "$value": "{color.text.muted}" }
+    },
+    "border": {
+      "default": { "$type": "color", "$value": "{color.border.default}" },
+      "focus":   { "$type": "color", "$value": "{color.border.focus}" },
+      "error":   { "$type": "color", "$value": "{color.status.danger}" }
+    },
+    "radius":   { "$type": "dimension", "$value": "{radius.control}" },
+    "paddingX": { "$type": "dimension", "$value": "{spacing.md}" },
+    "paddingY": { "$type": "dimension", "$value": "{spacing.sm}" },
+    "fontSize": { "$type": "dimension", "$value": "{font.body.size}" }
+  },
+  "badge": {
+    "success": {
+      "background": { "$type": "color", "$value": "{color.status.success}" },
+      "text":       { "$type": "color", "$value": "{color.text.onAccent}" }
+    },
+    "warning": {
+      "background": { "$type": "color", "$value": "{color.status.warning}" },
+      "text":       { "$type": "color", "$value": "{color.text.default}" }
+    },
+    "danger": {
+      "background": { "$type": "color", "$value": "{color.status.danger}" },
+      "text":       { "$type": "color", "$value": "{color.text.onAccent}" }
+    },
+    "radius":   { "$type": "dimension", "$value": "{radius.pill}" },
+    "paddingX": { "$type": "dimension", "$value": "{spacing.sm}" },
+    "paddingY": { "$type": "dimension", "$value": "{spacing.xs}" },
+    "fontSize": { "$type": "dimension", "$value": "{font.label.size}" }
+  }
+}
+

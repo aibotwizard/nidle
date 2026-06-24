@@ -1,0 +1,79 @@
+{
+  "$description": "Primitive tokens — raw, context-free values. Never reference these directly from components; reference them via the semantic layer.",
+  "color": {
+    "neutral": {
+      "0":    { "$type": "color", "$value": "#FFFFFF" },
+      "50":   { "$type": "color", "$value": "#F7F8FA" },
+      "100":  { "$type": "color", "$value": "#EEF0F4" },
+      "200":  { "$type": "color", "$value": "#D9DDE5" },
+      "300":  { "$type": "color", "$value": "#BAC1CD" },
+      "400":  { "$type": "color", "$value": "#8C95A6" },
+      "500":  { "$type": "color", "$value": "#5C6675" },
+      "600":  { "$type": "color", "$value": "#3F4754" },
+      "700":  { "$type": "color", "$value": "#2A303A" },
+      "800":  { "$type": "color", "$value": "#181C23" },
+      "900":  { "$type": "color", "$value": "#0B0D11" },
+      "1000": { "$type": "color", "$value": "#000000" }
+    },
+    "blue": {
+      "50":  { "$type": "color", "$value": "#EAF2FF" },
+      "100": { "$type": "color", "$value": "#CFE0FF" },
+      "300": { "$type": "color", "$value": "#7AA8FF" },
+      "500": { "$type": "color", "$value": "#2D6BFF" },
+      "600": { "$type": "color", "$value": "#1E54D9" },
+      "700": { "$type": "color", "$value": "#1740A8" }
+    },
+    "green": {
+      "100": { "$type": "color", "$value": "#D6F3DC" },
+      "500": { "$type": "color", "$value": "#1FA84A" },
+      "700": { "$type": "color", "$value": "#13713A" }
+    },
+    "red": {
+      "100": { "$type": "color", "$value": "#FBDCDC" },
+      "500": { "$type": "color", "$value": "#D32C2C" },
+      "700": { "$type": "color", "$value": "#921E1E" }
+    },
+    "amber": {
+      "100": { "$type": "color", "$value": "#FFEFCC" },
+      "500": { "$type": "color", "$value": "#E2A500" },
+      "700": { "$type": "color", "$value": "#8A6500" }
+    }
+  },
+  "size": {
+    "0":  { "$type": "dimension", "$value": "0px" },
+    "1":  { "$type": "dimension", "$value": "2px" },
+    "2":  { "$type": "dimension", "$value": "4px" },
+    "3":  { "$type": "dimension", "$value": "8px" },
+    "4":  { "$type": "dimension", "$value": "12px" },
+    "5":  { "$type": "dimension", "$value": "16px" },
+    "6":  { "$type": "dimension", "$value": "20px" },
+    "7":  { "$type": "dimension", "$value": "24px" },
+    "8":  { "$type": "dimension", "$value": "32px" },
+    "9":  { "$type": "dimension", "$value": "40px" },
+    "10": { "$type": "dimension", "$value": "48px" }
+  },
+  "radius": {
+    "none": { "$type": "dimension", "$value": "0px" },
+    "sm":   { "$type": "dimension", "$value": "4px" },
+    "md":   { "$type": "dimension", "$value": "8px" },
+    "lg":   { "$type": "dimension", "$value": "16px" },
+    "pill": { "$type": "dimension", "$value": "9999px" }
+  },
+  "fontSize": {
+    "xs": { "$type": "dimension", "$value": "12px" },
+    "sm": { "$type": "dimension", "$value": "14px" },
+    "md": { "$type": "dimension", "$value": "16px" },
+    "lg": { "$type": "dimension", "$value": "20px" },
+    "xl": { "$type": "dimension", "$value": "24px" }
+  },
+  "lineHeight": {
+    "tight":  { "$type": "number", "$value": 1.2 },
+    "normal": { "$type": "number", "$value": 1.5 }
+  },
+  "fontWeight": {
+    "regular":  { "$type": "number", "$value": 400 },
+    "medium":   { "$type": "number", "$value": 500 },
+    "semibold": { "$type": "number", "$value": 600 },
+    "bold":     { "$type": "number", "$value": 700 }
+  }
+}

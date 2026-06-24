@@ -1,43 +1,26 @@
 import { describe, expect, it } from "vitest";
-import { readFileSync, readdirSync, statSync } from "node:fs";
-import { join, relative } from "node:path";
-import { parseFiles, type UploadedFile } from "../src/shared/dtcg/parse.js";
+import { parseFiles } from "../src/shared/dtcg/parse.js";
 import {
+  collectionForFile,
   DEFAULT_SETTINGS,
   planForFiles,
   type FileTokens,
   type MappingSettings,
   type ValueSpec,
 } from "../src/shared/mapping/toFigma.js";
+import { fromUploads } from "../src/shared/intake/tokenIntake.js";
+import type { RawUpload } from "../src/shared/intake/types.js";
+import { loadFixtureUploads } from "./fixtures/loader.js";
 
 function loadFixture(name: string): {
-  uploads: UploadedFile[];
+  uploads: RawUpload[];
   expected: any;
 } {
-  const base = join(__dirname, "fixtures", name);
-  const expected = JSON.parse(readFileSync(join(base, "expected.json"), "utf8"));
-  const uploads: UploadedFile[] = [];
-  const walk = (dir: string) => {
-    for (const e of readdirSync(dir)) {
-      const full = join(dir, e);
-      if (statSync(full).isDirectory()) walk(full);
-      else if (e.endsWith(".json") && e !== "expected.json") {
-        uploads.push({
-          path: relative(base, full).split(/[/\\]/).join("/"),
-          json: JSON.parse(readFileSync(full, "utf8")),
-        });
-      }
-    }
-  };
-  walk(base);
-  return { uploads, expected };
+  return loadFixtureUploads(name);
 }
 
-function fileTokens(uploads: UploadedFile[]): FileTokens[] {
-  return uploads.map((u) => ({
-    file: u.path,
-    tokens: parseFiles([u]).tokens,
-  }));
+function fileTokens(uploads: RawUpload[]): FileTokens[] {
+  return fromUploads(uploads).files;
 }
 
 function findMode(values: { mode: string; value: ValueSpec }[], mode: string) {
@@ -188,6 +171,41 @@ describe("M4 — updateExisting toggle threads through to the plan op marker", (
   it("op='create' when updateExisting=false", () => {
     const plan = planForFiles(fts, { ...DEFAULT_SETTINGS, updateExisting: false });
     expect(plan.variables.every((v) => v.op === "create")).toBe(true);
+  });
+});
+
+describe("collectionForFile — folder routing", () => {
+  it("routes core/* to Primitives (case-insensitive)", () => {
+    expect(collectionForFile("core").collection).toBe("Primitives");
+    expect(collectionForFile("core/color.json").collection).toBe("Primitives");
+  });
+
+  it("routes Tokens Studio semantic set names to Semantic", () => {
+    for (const set of ["SchemeStatic/Light", "Scheme/Dark", "Device/Mobile", "Appearance/Compact", "Theme/Post", "Elements/Body", "Utilities/Color", "Helpers/Focus"]) {
+      expect(collectionForFile(set).collection).toBe("Semantic");
+    }
+  });
+
+  it("routes Components/* to Components (case-insensitive)", () => {
+    expect(collectionForFile("Components/Button").collection).toBe("Components");
+    expect(collectionForFile("components/button.json").collection).toBe("Components");
+  });
+
+  it("routes Palette/* to Primitives", () => {
+    expect(collectionForFile("Palette/Default").collection).toBe("Primitives");
+  });
+
+  it("falls back to Primitives with a warning for truly unknown folders", () => {
+    const result = collectionForFile("Unknown/things");
+    expect(result.collection).toBe("Primitives");
+    expect(result.fallbackWarning).toBeDefined();
+    expect(result.fallbackWarning!.reason).toMatch(/unknown top-level folder/);
+  });
+
+  it("no warning for flat single-file paths (no slash)", () => {
+    const result = collectionForFile("tokens");
+    expect(result.collection).toBe("Primitives");
+    expect(result.fallbackWarning).toBeUndefined();
   });
 });
 

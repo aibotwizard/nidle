@@ -65,13 +65,31 @@ export type FileTokens = {
   tokens: Token[];
 };
 
+const PRIMITIVES_TOPS = new Set([
+  "core",
+  "palette",
+  "figmaonly",
+]);
+
+const SEMANTIC_TOPS = new Set([
+  "semantic",
+  "schemestatic",
+  "scheme",
+  "device",
+  "appearance",
+  "theme",
+  "elements",
+  "utilities",
+  "helpers",
+]);
+
 export function collectionForFile(path: string): {
   collection: CollectionName;
   fallbackWarning?: ParseWarning;
 } {
-  const top = path.split("/")[0] ?? "";
-  if (top === "core") return { collection: "Primitives" };
-  if (top === "semantic") return { collection: "Semantic" };
+  const top = (path.split("/")[0] ?? "").toLowerCase();
+  if (PRIMITIVES_TOPS.has(top)) return { collection: "Primitives" };
+  if (SEMANTIC_TOPS.has(top)) return { collection: "Semantic" };
   if (top === "components") return { collection: "Components" };
   if (!path.includes("/")) return { collection: "Primitives" };
   return {
@@ -79,7 +97,7 @@ export function collectionForFile(path: string): {
     fallbackWarning: {
       file: path,
       path: "(root)",
-      reason: `unknown top-level folder "${top}" — defaulted to Primitives`,
+      reason: `unknown top-level folder "${path.split("/")[0]}" — defaulted to Primitives`,
     },
   };
 }
