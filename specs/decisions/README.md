@@ -39,7 +39,7 @@ references the old one and flip the old one's status to
 | # | Title | Status | Deciders |
 |---|-------|--------|----------|
 | [0001](0001-plan-then-apply-architecture.md) | Two-stage plan-then-apply architecture | accepted | AO |
-| [0002](0002-vanilla-ts-no-framework.md) | Vanilla TypeScript UI, no framework | accepted | AO, UX |
+| [0002](0002-vanilla-ts-no-framework.md) | Vanilla TypeScript UI, no framework | superseded by 0012 | AO, UX |
 | [0003](0003-single-inlined-ui-html.md) | Single inlined `ui.html` bundle | accepted | AO |
 | [0004](0004-idempotent-variable-upsert.md) | Idempotent variable upsert by `(collection, name)` | accepted | AO, PO |
 | [0005](0005-dtcg-2025-10-only.md) | Pin to DTCG · 2025.10 as the only supported format | accepted | PO |
@@ -49,3 +49,4 @@ references the old one and flip the old one's status to
 | [0009](0009-keepalias-preserves-direct-hop.md) | `keepAlias` preserves the author's direct hop, not the chain tip | accepted | AO, PO |
 | [0010](0010-async-writer-yields-per-progress-tick.md) | Async writer yields to the event loop on each progress tick | accepted | AO |
 | [0011](0011-dimensions-coerced-to-px-rem-base-16.md) | Dimensions are coerced to px; 1rem = 16px | accepted | AO, PO |
+| [0012](0012-react-ui-layer.md) | React UI layer | accepted | AO, UX |
