@@ -16,10 +16,13 @@ const codeOpts = {
 };
 
 const uiOpts = {
-  entryPoints: [resolve(__dirname, "src/ui/index.ts")],
+  entryPoints: [resolve(__dirname, "src/ui/main.tsx")],
   bundle: true,
   format: "iife",
   target: "es2017",
+  jsx: "automatic",
+  define: { "process.env.NODE_ENV": '"production"' },
+  minify: true,
   outfile: resolve(__dirname, "dist/ui.js"),
   logLevel: "info",
 };
@@ -30,9 +33,14 @@ async function emitUiHtml() {
     readFile(resolve(__dirname, "dist/ui.js"), "utf8"),
     readFile(resolve(__dirname, "src/ui/index.css"), "utf8"),
   ]);
+  if (js.includes("</script")) {
+    throw new Error("dist/ui.js contains '</script' — would truncate the inline <script>");
+  }
+  // Function replacers: a plain string replacement would interpret `$&`-style
+  // substitution patterns inside the minified bundle and corrupt it.
   const out = html
-    .replace("/*__INLINE_CSS__*/", css)
-    .replace("/*__INLINE_JS__*/", js);
+    .replace("/*__INLINE_CSS__*/", () => css)
+    .replace("/*__INLINE_JS__*/", () => js);
   await mkdir(resolve(__dirname, "dist"), { recursive: true });
   await writeFile(resolve(__dirname, "dist/ui.html"), out);
 }

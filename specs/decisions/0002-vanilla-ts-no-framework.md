@@ -1,6 +1,6 @@
 # ADR 0002 — Vanilla TypeScript UI, no framework
 
-- **Status:** accepted
+- **Status:** superseded by [ADR-0012](0012-react-ui-layer.md)
 - **Date:** 2026-06-23
 - **Deciders:** AO, UX
 - **Related:** [../plan.md](../plan.md) §1, [../agents/ux.md](../agents/ux.md)

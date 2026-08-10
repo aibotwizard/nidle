@@ -41,16 +41,20 @@ outstanding from the original five-milestone roadmap.
 
 - **Figma plugin** — Manifest v3, `editorType: ["figma"]`, runs in Figma
   Design only.
-- **UI layer** — single-page plugin iframe rendered as static HTML + a
-  small TypeScript bundle. The mocked design is HTML/CSS/JS, so the
-  closest 1:1 target is the same medium. No React unless a later
-  milestone forces it.
+- **UI layer** — single-page plugin iframe, React 19 function
+  components in TypeScript (see
+  [decisions/0012-react-ui-layer.md](decisions/0012-react-ui-layer.md);
+  supersedes the vanilla-TS choice in ADR-0002). The asset's CSS
+  transfers verbatim; JSX reuses its classNames 1:1.
 - **Plugin (sandboxed) code** — TypeScript, talks to the UI over
   `postMessage`. All Figma Variables API calls live here.
-- **Bundler** — `esbuild`. Two entry points (`ui.ts`, `code.ts`) → two
-  bundles. No framework.
-- **Tests** — `vitest` for parser/resolver logic; visual conformance is
-  enforced manually by the UX agent (see constitution §3.3).
+- **Bundler** — `esbuild`. Two entry points (`main.tsx`, `code/index.ts`)
+  → two bundles. Automatic JSX runtime; UI bundle minified with
+  `process.env.NODE_ENV` defined to `"production"`.
+- **Tests** — `vitest` for parser/resolver logic (node env) and a
+  jsdom + Testing Library flow test for the React wizard; visual
+  conformance is enforced manually by the UX agent (see
+  constitution §3.3).
 
 ## 2. Repository layout
 
@@ -65,7 +69,14 @@ plugin/
     ui/                 # iframe side (single bundle, no router)
       index.html        # shell; CSS+JS injected at build
       index.css
-      index.ts          # state machine, 4-step renderer, settings sheet
+      main.tsx          # entry: wires transport + settings store, mounts <App/>
+      App.tsx           # composition root: reducer, hooks, 4-step layout
+      state/            # appState.ts — wizard State/Action types + reducer
+      hooks/            # useSettings, useSandboxMessages, usePlan
+      components/       # TitleBar, Stepper, Step*, Footer, SettingsSheet, shared/
+      settings/         # framework-agnostic settings store + storage adapters
+      transport/        # postMessage multiplexer (sole owner of window.message)
+      intake/           # fileReader, dataTransfer (browser File/drop plumbing)
     shared/
       dtcg/
         parse.ts        # DTCG file → flat Token[]
