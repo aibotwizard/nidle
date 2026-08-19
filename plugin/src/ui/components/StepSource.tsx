@@ -1,22 +1,23 @@
 import { useState, type DragEvent } from "react";
-import type { FileMeta } from "../state/appState.js";
-import { readDataTransfer } from "../intake/dataTransfer.js";
+import type { FileMeta } from "../state/machine.js";
 import { DetectedCheckIcon, UploadIcon, UploadIconLarge } from "./shared/icons.js";
 
 export function StepSource({
   files,
   onFilesPicked,
+  onDropTransfer,
 }: {
   files: FileMeta[];
-  onFilesPicked: (list: FileList | File[]) => void;
+  onFilesPicked: (list: FileList) => void;
+  onDropTransfer: (dt: DataTransfer) => void;
 }) {
   const [dragging, setDragging] = useState(false);
 
-  const handleDrop = async (e: DragEvent) => {
+  const handleDrop = (e: DragEvent) => {
     e.preventDefault();
     setDragging(false);
     if (!e.dataTransfer) return;
-    onFilesPicked(await readDataTransfer(e.dataTransfer));
+    onDropTransfer(e.dataTransfer);
   };
 
   const totalTokens = files.reduce((a, f) => a + f.tokens.length, 0);

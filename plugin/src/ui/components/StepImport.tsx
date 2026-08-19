@@ -1,4 +1,4 @@
-import type { ImportResult, LogLine } from "../state/appState.js";
+import type { ImportResult, LogLine } from "../state/machine.js";
 import { DoneCheckIcon, SpinnerIcon } from "./shared/icons.js";
 import { ConsoleLog } from "./shared/ConsoleLog.js";
 

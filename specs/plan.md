@@ -66,17 +66,16 @@ plugin/
     code/               # Figma sandbox side
       index.ts          # message router + applyPlan + clientStorage I/O
       messages.ts       # typed UI ↔ code messages
-    ui/                 # iframe side (single bundle, no router)
+    ui/                 # iframe side (single bundle, no router) — ADR-0013
       index.html        # shell; CSS+JS injected at build
       index.css
-      main.tsx          # entry: wires transport + settings store, mounts <App/>
-      App.tsx           # composition root: reducer, hooks, 4-step layout
-      state/            # appState.ts — wizard State/Action types + reducer
-      hooks/            # useSettings, useSandboxMessages, usePlan
+      main.tsx          # entry: builds io singletons, mounts <App/>
+      App.tsx           # wiring only: reducer + effects + step switch
+      state/            # machine.ts — Phase union + settings + reducer (Action ⊇ ToUI)
+      io/               # transport (postMessage multiplexer), settingsIO
+                        # (storage port + adapters + validation), intake
+                        # (picker + drop producers; owns the path contract)
       components/       # TitleBar, Stepper, Step*, Footer, SettingsSheet, shared/
-      settings/         # framework-agnostic settings store + storage adapters
-      transport/        # postMessage multiplexer (sole owner of window.message)
-      intake/           # fileReader, dataTransfer (browser File/drop plumbing)
     shared/
       dtcg/
         parse.ts        # DTCG file → flat Token[]
@@ -92,6 +91,13 @@ plugin/
     parse.spec.ts       # DTCG parse + m1 planForFiles fixture coverage
     resolve.spec.ts     # alias resolver: chains, cycles, type mismatches
     toFigma.spec.ts     # M2 themes/aliases + M4 multi-collection fixtures
+    tokenIntake.spec.ts # shared intake bucketing
+    variableWriter.spec.ts  # apply stage through the in-memory FigmaApi
+    settingsIO.spec.ts  # validation + both storage adapters (incl. timeout)
+    ui/
+      appFlow.spec.tsx  # real wizard end-to-end (jsdom), error path, settings→DOM
+      machine.spec.ts   # reducer lifecycle edges, log truncation
+      intake.spec.ts    # path contract: drop ≡ pick (FR-106)
 specs/                  # constitution, plan, ADRs, agents, assets, requirements
 ```
 
@@ -225,7 +231,7 @@ posting + source provenance on every op) already supplied them.
    source: { file, path } }`; rendered in the import log and the Step 4
    stats panel.
 3. Settings persisted via the `readSettings`/`writeSettings` message
-   pair against `figma.clientStorage` under key `boppli.settings.v1`.
+   pair against `figma.clientStorage` under key `nidle.settings.v1` (migrated from the legacy `boppli.settings.v1` on first read).
    Unknown keys are tolerated on read (schema migration is just
    `{ ...DEFAULT_SETTINGS, ...stored }`).
 

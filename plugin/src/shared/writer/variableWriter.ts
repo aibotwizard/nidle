@@ -4,6 +4,7 @@ import { upsertVariables } from "./upsertVariables.js";
 import { writeValues } from "./writeValues.js";
 import type {
   FigmaApi,
+  LogTone,
   WriteOptions,
   WriteReport,
 } from "./types.js";
@@ -22,15 +23,26 @@ export async function write(
   api: FigmaApi,
   opts: WriteOptions = {},
 ): Promise<WriteReport> {
-  const onProgress = opts.onProgress ?? (() => {});
+  const raw = opts.onProgress ?? (() => {});
 
-  onProgress({
-    pct: 0,
-    line: `Preparing ${plan.variables.length} variables across ${plan.collections.length} collection${plan.collections.length === 1 ? "" : "s"}…`,
-    tone: "dim",
-  });
+  // Single owner of the progress scale (req-0003 / FR-805). Callees
+  // report their LOCAL 0–100; phases map onto one global, monotonic
+  // scale: setup 0–10, value writes 10–100.
+  let lastPct = 0;
+  const post = (pct: number, line: string, tone: LogTone) => {
+    lastPct = Math.max(lastPct, Math.min(100, Math.round(pct)));
+    raw({ pct: lastPct, line, tone });
+  };
 
-  const collections = setupCollections(plan, api, onProgress);
+  post(
+    0,
+    `Preparing ${plan.variables.length} variables across ${plan.collections.length} collection${plan.collections.length === 1 ? "" : "s"}…`,
+    "dim",
+  );
+
+  const collections = setupCollections(plan, api, (p) =>
+    post(p.pct * 0.1, p.line, p.tone),
+  );
   const { varByKey, created, updated, errors: upsertErrors } = upsertVariables(
     plan,
     api,
@@ -43,7 +55,7 @@ export async function write(
     varByKey,
     created,
     updated,
-    onProgress,
+    (p) => post(10 + p.pct * 0.9, p.line, p.tone),
   );
 
   return {

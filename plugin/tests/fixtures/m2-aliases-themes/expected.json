@@ -2,7 +2,7 @@
   "tokens": 9,
   "collections": [
     { "name": "Primitives", "modes": ["Value"], "variableCount": 3 },
-    { "name": "Semantic",   "modes": ["Light", "Dark"], "variableCount": 3 }
+    { "name": "Semantic-Color-Scheme", "modes": ["Light", "Dark"], "variableCount": 3 }
   ],
   "primitives": {
     "color/blue/500": { "type": "COLOR", "value": "#0D99FF" },

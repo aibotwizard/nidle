@@ -87,10 +87,14 @@ pick a subfolder, and reach Step 2 with the file tree populated.
 
 ### M4 — Multi-collection layout & update semantics — **[implemented]**
 
-- **[implemented]** Three-collection layout: **Primitives**, **Semantic**,
-  **Components**, driven by folder convention (`core/`, `semantic/`,
-  `components/`). Unknown top-level folders fall back to Primitives with a
-  warning.
+- **[implemented — amended 2026-08-19, ADR-0014]** Collection layout
+  driven by folder convention (`core/`, `semantic/`, `components/` or
+  `component/`): **Primitives**, **Components**, and one collection per
+  semantic mode switcher — `Semantic-Color-Scheme` (Light/Dark, default
+  Light), `Semantic-Appearance` (Desktop/Tablet, default Desktop),
+  `Semantic-<Dir>` for other switchers, plain `Semantic` for unthemed
+  files (req-0006). Unknown top-level folders fall back to Primitives
+  with a warning.
 - **[implemented]** Group separator setting (`slash` ↔ `dot`) applied to
   variable names, persisted in `clientStorage`.
 - **[implemented]** "Update existing variables" toggle — match by

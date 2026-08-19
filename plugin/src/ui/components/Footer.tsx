@@ -1,4 +1,4 @@
-import type { Step } from "../state/appState.js";
+import type { Step } from "../state/machine.js";
 
 export function Footer({
   step,

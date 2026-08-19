@@ -152,7 +152,18 @@ function normalizeValue(
   }
   if (type === "dimension") {
     const px = dimensionToPx(raw);
-    if (px !== null) return px;
+    if (px !== null) {
+      // `em` is converted as if it were rem (deviation D-3, ADR-0011);
+      // the token is kept, but the conversion is surfaced, not silent.
+      if (typeof raw === "string" && /em\s*$/i.test(raw.trim()) && !/rem\s*$/i.test(raw.trim())) {
+        warnings.push({
+          file,
+          path: trail.join("/"),
+          reason: `em treated as rem: "${raw}" → ${px}px (1em = 16px, ADR-0011)`,
+        });
+      }
+      return px;
+    }
     warnings.push({
       file,
       path: trail.join("/"),
@@ -162,8 +173,10 @@ function normalizeValue(
     return null;
   }
   if (type === "number") {
-    if (typeof raw === "number") return raw;
-    if (typeof raw === "string" && Number.isFinite(parseFloat(raw))) {
+    if (typeof raw === "number" && Number.isFinite(raw)) return raw;
+    // Strict grammar, matching dimensionToPx sans unit — parseFloat
+    // would silently accept trailing garbage like "12abc" (D-6).
+    if (typeof raw === "string" && /^-?\d*\.?\d+$/.test(raw.trim())) {
       return parseFloat(raw);
     }
     warnings.push({

@@ -41,16 +41,20 @@ describe("M2 — aliases & themes fixture (keepAlias)", () => {
     expect(total).toBe(expected.tokens);
   });
 
-  it("emits one Primitives + one Semantic collection, with Semantic having Light + Dark modes", () => {
-    expect(plan.collections.map((c) => c.name)).toEqual(["Primitives", "Semantic"]);
-    const semantic = plan.collections.find((c) => c.name === "Semantic")!;
-    expect(semantic.modes.sort()).toEqual(["Dark", "Light"]);
+  it("splits themed Light/Dark files into Semantic-Color-Scheme with Light as default", () => {
+    expect(plan.collections.map((c) => c.name)).toEqual([
+      "Primitives",
+      "Semantic-Color-Scheme",
+    ]);
+    const semantic = plan.collections.find((c) => c.name === "Semantic-Color-Scheme")!;
+    // Exact order: the first mode becomes Figma's default mode.
+    expect(semantic.modes).toEqual(["Light", "Dark"]);
   });
 
   it("each semantic variable carries one alias edge per mode", () => {
     for (const [name, spec] of Object.entries<any>(expected.semantic)) {
       const v = plan.variables.find(
-        (x) => x.name === name && x.collection === "Semantic",
+        (x) => x.name === name && x.collection === "Semantic-Color-Scheme",
       );
       expect(v, `missing variable ${name}`).toBeDefined();
       for (const [mode, expectedAlias] of Object.entries<any>(spec.alias)) {
@@ -78,7 +82,7 @@ describe("M2 — aliases & themes fixture (resolve mode)", () => {
   it("substitutes every alias with the chain-tip literal", () => {
     for (const [name, spec] of Object.entries<any>(expected.semantic)) {
       const v = plan.variables.find(
-        (x) => x.name === name && x.collection === "Semantic",
+        (x) => x.name === name && x.collection === "Semantic-Color-Scheme",
       )!;
       for (const [mode, expectedLiteral] of Object.entries<any>(spec.resolved)) {
         const mv = findMode(v.values, mode)!;
@@ -174,6 +178,74 @@ describe("M4 — updateExisting toggle threads through to the plan op marker", (
   });
 });
 
+// ============================================================
+// Semantic split (Jira OpenUI productionisation — AC 1.1 / 1.2 / 1.3)
+// ============================================================
+
+describe("semantic split — one collection per mode switcher", () => {
+  const color = (hex: string) => ({ $type: "color", $value: hex });
+  const uploads: RawUpload[] = [
+    { path: "core/color.json", json: { blue: { "500": color("#0D99FF") } } },
+    { path: "scheme/light.json", json: { bg: color("#FFFFFF") } },
+    { path: "scheme/dark.json", json: { bg: color("#000000") } },
+    { path: "appearance/desktop.json", json: { pad: { $type: "dimension", $value: "16px" } } },
+    { path: "appearance/tablet.json", json: { pad: { $type: "dimension", $value: "24px" } } },
+    { path: "device/mobile.json", json: { gap: { $type: "number", $value: 4 } } },
+    { path: "device/widescreen.json", json: { gap: { $type: "number", $value: 8 } } },
+    { path: "semantic/tokens.json", json: { accent: { $type: "color", $value: "{blue.500}" } } },
+    { path: "component/button.json", json: { buttonBg: { $type: "color", $value: "{bg}" } } },
+  ];
+  const plan = planForFiles(fileTokens(uploads), DEFAULT_SETTINGS);
+  const byName = (c: string) => plan.collections.find((x) => x.name === c);
+
+  it("Light/Dark themed files become Semantic-Color-Scheme, Light default", () => {
+    expect(byName("Semantic-Color-Scheme")?.modes).toEqual(["Light", "Dark"]);
+  });
+
+  it("Desktop/Tablet themed files become Semantic-Appearance, Desktop default", () => {
+    expect(byName("Semantic-Appearance")?.modes).toEqual(["Desktop", "Tablet"]);
+  });
+
+  it("any other mode switcher splits dynamically, named from its directory", () => {
+    expect(byName("Semantic-Device")?.modes.sort()).toEqual(["Mobile", "Widescreen"]);
+  });
+
+  it("non-themed semantic files stay in the plain Semantic collection", () => {
+    expect(byName("Semantic")?.modes).toEqual(["Value"]);
+    const accent = plan.variables.find((v) => v.name === "accent")!;
+    expect(accent.collection).toBe("Semantic");
+  });
+
+  it("a singular component/ folder routes to Components", () => {
+    const bg = plan.variables.find((v) => v.name === "buttonBg" && v.collection === "Components");
+    expect(bg).toBeDefined();
+  });
+
+  it("alias targets use the split collection, not the semantic base", () => {
+    const bg = plan.variables.find((v) => v.name === "buttonBg" && v.collection === "Components")!;
+    expect(bg.values[0]!.value).toEqual({
+      kind: "alias",
+      targetCollection: "Semantic-Color-Scheme",
+      targetName: "bg",
+    });
+  });
+
+  it("emits collections in base order: Primitives, semantic splits, Components", () => {
+    expect(plan.collections.map((c) => c.name)).toEqual([
+      "Primitives",
+      "Semantic-Color-Scheme",
+      "Semantic-Appearance",
+      "Semantic-Device",
+      "Semantic",
+      "Components",
+    ]);
+  });
+
+  it("emits no warnings for this layout", () => {
+    expect(plan.warnings).toEqual([]);
+  });
+});
+
 describe("collectionForFile — folder routing", () => {
   it("routes core/* to Primitives (case-insensitive)", () => {
     expect(collectionForFile("core").collection).toBe("Primitives");
@@ -189,6 +261,11 @@ describe("collectionForFile — folder routing", () => {
   it("routes Components/* to Components (case-insensitive)", () => {
     expect(collectionForFile("Components/Button").collection).toBe("Components");
     expect(collectionForFile("components/button.json").collection).toBe("Components");
+  });
+
+  it("accepts the singular component/ folder too (AC 1.3)", () => {
+    expect(collectionForFile("component/button.json").collection).toBe("Components");
+    expect(collectionForFile("Component/Button").collection).toBe("Components");
   });
 
   it("routes Palette/* to Primitives", () => {

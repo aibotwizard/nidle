@@ -50,3 +50,5 @@ references the old one and flip the old one's status to
 | [0010](0010-async-writer-yields-per-progress-tick.md) | Async writer yields to the event loop on each progress tick | accepted | AO |
 | [0011](0011-dimensions-coerced-to-px-rem-base-16.md) | Dimensions are coerced to px; 1rem = 16px | accepted | AO, PO |
 | [0012](0012-react-ui-layer.md) | React UI layer | accepted | AO, UX |
+| [0013](0013-ui-deep-module-rewrite.md) | UI deep-module rewrite: consolidated layout, settings in the reducer | accepted | AO, UX |
+| [0014](0014-semantic-split-by-mode-switcher.md) | Semantic collections split per mode switcher | accepted | AO, PO |

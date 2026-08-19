@@ -236,3 +236,42 @@ describe("parse warnings", () => {
     expect(warnings[0].reason).toMatch(/not a JSON object/);
   });
 });
+
+// ============================================================
+// req-0003 — honest diagnostics (D-3 / D-6)
+// ============================================================
+
+describe("number values — strict grammar (D-6)", () => {
+  const parse = (value: unknown) =>
+    parseFiles([{ path: "core/n.json", json: { n: { $type: "number", $value: value } } }]);
+
+  it("accepts JSON numbers and clean numeric strings", () => {
+    expect(parse(4).tokens[0]!.value).toBe(4);
+    expect(parse("4.5").tokens[0]!.value).toBe(4.5);
+    expect(parse(" -2 ").tokens[0]!.value).toBe(-2);
+  });
+
+  it("rejects trailing garbage instead of silently truncating it", () => {
+    const r = parse("12abc");
+    expect(r.tokens).toEqual([]);
+    expect(r.warnings).toHaveLength(1);
+    expect(r.warnings[0]!.reason).toMatch(/number value must be numeric/);
+  });
+});
+
+describe("em dimensions surface their conversion (D-3)", () => {
+  const dim = (value: unknown) =>
+    parseFiles([{ path: "core/d.json", json: { pad: { $type: "dimension", $value: value } } }]);
+
+  it("keeps the token but logs the em→px conversion", () => {
+    const r = dim("1.5em");
+    expect(r.tokens[0]!.value).toBe(24);
+    expect(r.warnings).toHaveLength(1);
+    expect(r.warnings[0]!.reason).toContain('em treated as rem: "1.5em" → 24px');
+  });
+
+  it("rem and px stay silent", () => {
+    expect(dim("1rem").warnings).toEqual([]);
+    expect(dim("16px").warnings).toEqual([]);
+  });
+});

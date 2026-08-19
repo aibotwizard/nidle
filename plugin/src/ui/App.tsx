@@ -1,12 +1,16 @@
-import { useReducer } from "react";
-import type { SandboxTransport } from "./transport/types.js";
-import type { SettingsStore } from "./settings/types.js";
+import { useEffect, useMemo, useReducer } from "react";
+import { planForFiles, type FileTokens, type MappingSettings } from "../shared/mapping/toFigma.js";
 import { fromUploads } from "../shared/intake/tokenIntake.js";
-import { readJsonFiles } from "./intake/fileReader.js";
-import { initialState, reducer, type FileMeta, type LogLine, type Step } from "./state/appState.js";
-import { useSettings } from "./hooks/useSettings.js";
-import { useSandboxMessages } from "./hooks/useSandboxMessages.js";
-import { usePlan } from "./hooks/usePlan.js";
+import type { SandboxTransport } from "./io/transport.js";
+import { mergeWithDefaults, type SettingsStorage } from "./io/settingsIO.js";
+import { fromDrop, fromPicker, type IntakeFiles } from "./io/intake.js";
+import {
+  initialState,
+  reducer,
+  stepOf,
+  type FileMeta,
+  type LogLine,
+} from "./state/machine.js";
 import { TitleBar } from "./components/TitleBar.js";
 import { Stepper } from "./components/Stepper.js";
 import { Footer } from "./components/Footer.js";
@@ -18,20 +22,45 @@ import { SettingsSheet, type ThemedGroup } from "./components/SettingsSheet.js";
 
 export function App({
   transport,
-  settingsStore,
+  storage,
 }: {
   transport: SandboxTransport;
-  settingsStore: SettingsStore;
+  storage: SettingsStorage;
 }) {
   const [state, dispatch] = useReducer(reducer, initialState);
-  const settings = useSettings(settingsStore);
-  const plan = usePlan(state.files, settings);
-  useSandboxMessages(transport, dispatch);
+
+  // Every sandbox message is an Action (Action ⊇ ToUI) — no translation.
+  useEffect(() => transport.addMessageListener(dispatch), [transport]);
+
+  // Initial settings hydrate; the reducer validates via mergeWithDefaults.
+  useEffect(() => {
+    let live = true;
+    void storage.load().then((raw) => {
+      if (live) dispatch({ type: "settings", settings: raw ?? {} });
+    });
+    return () => {
+      live = false;
+    };
+  }, [storage]);
+
+  const step = stepOf(state.phase);
+  const importing = state.phase.kind === "importing";
+  const done = state.phase.kind === "done";
+  const progress =
+    state.phase.kind === "importing" ? state.phase.progress : done ? 100 : 0;
+  const result = state.phase.kind === "done" ? state.phase.result : undefined;
 
   const selectedCount = state.files.filter((f) => f.selected).length;
 
-  const handleFilesPicked = async (list: FileList | File[]) => {
-    const { uploads, parseFailures } = await readJsonFiles(list);
+  const plan = useMemo(() => {
+    const fts: FileTokens[] = state.files
+      .filter((f) => f.selected)
+      .map((f) => ({ file: f.path, tokens: f.tokens }));
+    return planForFiles(fts, state.settings);
+  }, [state.files, state.settings]);
+
+  const handleIntake = async (intake: Promise<IntakeFiles>) => {
+    const { uploads, parseFailures } = await intake;
     const { files: fileTokens, warnings } = fromUploads(uploads);
 
     // Surface parse-time warnings (unsupported $type, malformed values) so
@@ -59,12 +88,15 @@ export function App({
   };
 
   const handleStartImport = () => {
-    if (plan.variables.length === 0) {
-      dispatch({ type: "importBlockedEmpty" });
-      return;
-    }
     dispatch({ type: "importStarted", count: plan.variables.length });
     transport.postCode({ type: "applyPlan", plan });
+  };
+
+  // Persist on the event, not in an effect — the reducer applies the same
+  // merge, so store and state cannot disagree.
+  const handleSettingsUpdate = (patch: Partial<MappingSettings>) => {
+    dispatch({ type: "settingsChanged", patch });
+    void storage.save(mergeWithDefaults({ ...state.settings, ...patch }));
   };
 
   const themedGroups = plan.themeGroups.filter(
@@ -74,50 +106,54 @@ export function App({
   return (
     <>
       <TitleBar
-        onOpenSettings={() => dispatch({ type: "settingsOpened" })}
+        onOpenSettings={() => dispatch({ type: "sheetToggled", open: true })}
         onClose={() => transport.postCode({ type: "close" })}
       />
-      <Stepper step={state.step} />
+      <Stepper step={step} />
       <div className="content scroll">
-        {state.step === 1 ? (
-          <StepSource files={state.files} onFilesPicked={(l) => void handleFilesPicked(l)} />
-        ) : state.step === 2 ? (
+        {step === 1 ? (
+          <StepSource
+            files={state.files}
+            onFilesPicked={(l) => void handleIntake(fromPicker(l))}
+            onDropTransfer={(dt) => void handleIntake(fromDrop(dt))}
+          />
+        ) : step === 2 ? (
           <StepSets
             files={state.files}
             onToggleFile={(path) => dispatch({ type: "fileToggled", path })}
           />
-        ) : state.step === 3 ? (
+        ) : step === 3 ? (
           <StepPreview plan={plan} selectedCount={selectedCount} />
         ) : (
           <StepImport
-            importing={state.importing}
-            done={state.done}
-            progress={state.progress}
-            result={state.result}
+            importing={importing}
+            done={done}
+            progress={progress}
+            result={result}
             planWarnings={plan.warnings.length}
             log={state.log}
           />
         )}
       </div>
       <Footer
-        step={state.step}
+        step={step}
         filesCount={state.files.length}
         selectedCount={selectedCount}
         planVarCount={plan.variables.length}
-        importing={state.importing}
-        done={state.done}
-        onBack={() => dispatch({ type: "stepChanged", step: (state.step - 1) as Step })}
-        onNext={() => dispatch({ type: "stepChanged", step: (state.step + 1) as Step })}
+        importing={importing}
+        done={done}
+        onBack={() => dispatch({ type: "navigated", to: (step - 1) as 1 | 2 })}
+        onNext={() => dispatch({ type: "navigated", to: (step + 1) as 2 | 3 })}
         onStartImport={handleStartImport}
         onReset={() => dispatch({ type: "reset" })}
         onClose={() => transport.postCode({ type: "close" })}
       />
       {state.settingsOpen ? (
         <SettingsSheet
-          settings={settings}
-          onUpdate={settingsStore.update}
+          settings={state.settings}
+          onUpdate={handleSettingsUpdate}
           themedGroups={themedGroups}
-          onClose={() => dispatch({ type: "settingsClosed" })}
+          onClose={() => dispatch({ type: "sheetToggled", open: false })}
         />
       ) : null}
     </>

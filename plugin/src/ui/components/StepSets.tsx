@@ -1,4 +1,4 @@
-import type { FileMeta } from "../state/appState.js";
+import type { FileMeta } from "../state/machine.js";
 import { FileIcon, FolderIcon, StepCheckIcon } from "./shared/icons.js";
 
 export function StepSets({
