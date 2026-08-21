@@ -61,9 +61,27 @@ and the case where it currently misfires.
 ### 2.3 Document shape
 
 A token file is a tree of **groups** (plain JSON objects) whose leaves
-are **tokens**. A node is a token when it has both `$type` and
-`$value`. Keys beginning with `$` are metadata and are never walked as
-groups.
+are **tokens**. A node is a token as soon as it has `$value`. Keys
+beginning with `$` are metadata and are never walked as groups.
+
+A token's `$type` need not be declared on the token itself. Following
+DTCG §5.2.2 and §6.3, it is determined in this order:
+
+1. the token's own `$type`;
+2. otherwise, if `$value` is a reference, the type of the token it
+   references;
+3. otherwise, the `$type` of the **closest ancestor group** that
+   declares one — groups inherit through nesting, and the file root
+   counts as a group;
+4. otherwise the token is invalid and warns
+   `no $type on the token or any ancestor group — type cannot be
+   determined` (ADR-0018).
+
+Because rule 2 needs the whole token set, an untyped reference token
+leaves parse with its type unset; §4.2 fills it in. An inherited
+`$type` is folded (D-8/D-10) and range-checked at each token, so an
+unsupported group type warns once per child rather than once per
+group.
 
 ```json
 {
@@ -169,11 +187,13 @@ is specified below; the module map is in
 
 ### 4.1 Parse
 
-Walk each file's tree depth-first. For every leaf with a supported
-`$type`, emit one token `{ name, type, value, file }` where `name` is
-the slash-joined key trail and `value` is either a normalised literal
-(§3.2) or a raw alias string (§3.3). Groups are recursed; `$`-prefixed
-keys are skipped.
+Walk each file's tree depth-first, carrying the closest declared
+`$type` down as the inherited default (§2.3). For every leaf with a
+supported `$type`, emit one token `{ name, type, value, file }` where
+`name` is the slash-joined key trail and `value` is either a
+normalised literal (§3.2) or a raw alias string (§3.3). An untyped
+reference token is emitted with `type: null` for §4.2 to resolve.
+Groups are recursed; `$`-prefixed keys are skipped.
 
 Output is a **flat** token list, not a tree. Flatness is what makes
 cross-file alias resolution tractable.
@@ -189,6 +209,11 @@ validate three things:
 1. **It terminates** at a literal-bearing token.
 2. **It contains no cycle** — the trail is tracked in a `seen` set.
 3. **The chain tip's `$type` matches the source token's `$type`.**
+
+A token that left parse untyped (§2.3 rule 2) is the exception to
+check 3: it takes the chain tip's type instead of being matched
+against it, since it declared no expectation to violate (ADR-0018).
+After this stage every token's type is concrete.
 
 Any failure produces a warning and the token is **dropped from the
 output** (it will not appear in Figma):
@@ -431,8 +456,8 @@ silently ([constitution.md](constitution.md) §3.2).
 **Plan warnings** carry `{ file, path, reason }` and are raised during
 parse, resolve, and plan. Catalogue: unsupported `$type`, non-object
 file root, malformed colour, malformed dimension, malformed number,
-unresolvable alias, alias cycle, alias type mismatch, unknown
-top-level folder, conflicting types across modes.
+undeterminable `$type`, unresolvable alias, alias cycle, alias type
+mismatch, unknown top-level folder, conflicting types across modes.
 
 **Write errors** carry `{ variable, reason, source: { file, path } }`
 and are raised during apply. Catalogue: variable exists and

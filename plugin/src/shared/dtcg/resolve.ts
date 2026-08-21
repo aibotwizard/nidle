@@ -1,5 +1,5 @@
 import { aliasPath, isAliasValue } from "./parse.js";
-import type { ParseWarning, Token } from "./types.js";
+import type { DtcgType, ParseWarning, Token } from "./types.js";
 
 export type ResolveMode = "keepAlias" | "resolve";
 
@@ -10,7 +10,8 @@ export type ResolvedValue =
 
 export type ResolvedToken = {
   name: string;
-  type: Token["type"];
+  /** Always concrete: an untyped token has taken its target's type. */
+  type: DtcgType;
   file: string;
   value: ResolvedValue;
 };
@@ -46,7 +47,8 @@ export function resolveTokens(
     if (!isAliasValue(t.value)) {
       out.push({
         name: t.name,
-        type: t.type,
+        // Only alias-valued tokens are left untyped by the parser.
+        type: t.type!,
         file: t.file,
         value: { kind: "literal", value: t.value },
       });
@@ -89,8 +91,10 @@ export function resolveTokens(
     }
 
     // cursor is the literal-bearing chain tip; the immediate target is the
-    // first hop named in t.value itself.
-    if (cursor.type !== t.type) {
+    // first hop named in t.value itself. An untyped token declared no
+    // expectation to violate, so it skips the match check and simply takes
+    // the type of what it points at (DTCG §5.2.2).
+    if (t.type !== null && cursor.type !== t.type) {
       warnings.push({
         file: t.file,
         path: t.name,
@@ -98,11 +102,13 @@ export function resolveTokens(
       });
       continue;
     }
+    // The chain tip carries a literal, so its type is never null.
+    const type = (t.type ?? cursor.type)!;
 
     if (mode === "resolve") {
       out.push({
         name: t.name,
-        type: t.type,
+        type,
         file: t.file,
         value: { kind: "literal", value: cursor.value },
       });
@@ -114,7 +120,7 @@ export function resolveTokens(
       const directTarget = aliasName(t.value as string);
       out.push({
         name: t.name,
-        type: t.type,
+        type,
         file: t.file,
         value: { kind: "alias", targetName: directTarget },
       });

@@ -365,3 +365,94 @@ describe("percent dimensions convert to fractions (ADR-0016)", () => {
     expect(r.warnings[0]!.reason).toContain('percent treated as a fraction: "150%" → 1.5');
   });
 });
+
+describe("DTCG $type inheritance (spec §5.2.2 / §6.3)", () => {
+  it("inherits $type from the closest ancestor group", () => {
+    const { tokens, warnings } = parseFiles([
+      {
+        path: "core/sizes.json",
+        json: {
+          sizes: {
+            $type: "dimension",
+            "1": { $value: "1px" },
+            nested: { "4": { $value: "4px" } },
+          },
+        },
+      },
+    ]);
+    expect(warnings).toEqual([]);
+    expect(
+      Object.fromEntries(tokens.map((t) => [t.name, { type: t.type, value: t.value }])),
+    ).toEqual({
+      "sizes/1": { type: "dimension", value: 1 },
+      "sizes/nested/4": { type: "dimension", value: 4 },
+    });
+  });
+
+  it("inherits $type declared at the file root", () => {
+    const { tokens } = parseFiles([
+      { path: "core/x.json", json: { $type: "number", ratio: { $value: 1.5 } } },
+    ]);
+    expect(tokens).toEqual([
+      { name: "ratio", type: "number", value: 1.5, file: "core/x.json" },
+    ]);
+  });
+
+  it("lets a token's own $type override the inherited one", () => {
+    const { tokens } = parseFiles([
+      {
+        path: "core/x.json",
+        json: {
+          grp: { $type: "dimension", label: { $type: "text", $value: "hi" } },
+        },
+      },
+    ]);
+    expect(tokens[0]).toMatchObject({ name: "grp/label", type: "text" });
+  });
+
+  it("warns instead of silently dropping when no $type can be determined", () => {
+    const { tokens, warnings } = parseFiles([
+      { path: "core/x.json", json: { orphan: { $value: "4px" } } },
+    ]);
+    expect(tokens).toEqual([]);
+    expect(warnings).toEqual([
+      {
+        file: "core/x.json",
+        path: "orphan",
+        reason: "no $type on the token or any ancestor group — type cannot be determined",
+      },
+    ]);
+  });
+
+  it("warns per token when the inherited $type is unsupported", () => {
+    const { tokens, warnings } = parseFiles([
+      {
+        path: "core/x.json",
+        json: { sh: { $type: "shadow", a: { $value: "x" }, b: { $value: "y" } } },
+      },
+    ]);
+    expect(tokens).toEqual([]);
+    expect(warnings.map((w) => w.path)).toEqual(["sh/a", "sh/b"]);
+    expect(warnings[0].reason).toContain('unsupported $type "shadow"');
+  });
+});
+
+describe("DTCG untyped alias tokens (spec §5.2.2 rule 1)", () => {
+  it("defers $type to the alias target when nothing declares one", () => {
+    const { tokens, warnings } = parseFiles([
+      {
+        path: "component/btn.json",
+        json: { btn: { "border-width": { $value: "{sizes.1}" } } },
+      },
+    ]);
+    expect(warnings).toEqual([]);
+    expect(tokens).toEqual([
+      {
+        name: "btn/border-width",
+        type: null,
+        value: "{sizes.1}",
+        file: "component/btn.json",
+      },
+    ]);
+  });
+});

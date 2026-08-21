@@ -15,7 +15,11 @@ export type DtcgGroup = {
 export type Token = {
   /** Slash-joined path inside the file, e.g. "color/blue/500". */
   name: string;
-  type: DtcgType;
+  /** `null` when the token declares no `$type` and none is inherited —
+   *  its value is then a reference and the type comes from the target
+   *  (DTCG §5.2.2). The resolver fills it in; nothing downstream of
+   *  resolve ever sees `null`. */
+  type: DtcgType | null;
   /** Either a literal value (string for color/text, number for
    *  dimension/number) or an alias reference `{color.blue.500}` left
    *  unresolved. */
