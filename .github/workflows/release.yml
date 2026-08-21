@@ -1,0 +1,71 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: plugin/package-lock.json
+
+      - name: Derive version from tag
+        id: meta
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          version="${TAG#v}"
+          pkg="$(node -p "require('./plugin/package.json').version")"
+          if [ "$version" != "$pkg" ]; then
+            echo "::error::Tag $TAG implies version $version, but plugin/package.json is $pkg. Bump package.json or retag."
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - run: npm ci
+        working-directory: plugin
+
+      - run: npm run typecheck
+        working-directory: plugin
+
+      - run: npm test
+        working-directory: plugin
+
+      - run: npm run build
+        working-directory: plugin
+
+      # Wrapper folder keeps manifest.json's dist/* paths valid after unzipping.
+      # dist/ui.js is omitted: it is already inlined into dist/ui.html.
+      - name: Stage and zip the plugin package
+        env:
+          VERSION: ${{ steps.meta.outputs.version }}
+        run: |
+          stage="nidle-v${VERSION}"
+          mkdir -p "${stage}/dist"
+          cp plugin/manifest.json "${stage}/"
+          cp plugin/dist/code.js plugin/dist/ui.html "${stage}/dist/"
+          cp README.md LICENSE "${stage}/"
+          zip -r "${stage}.zip" "${stage}"
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          VERSION: ${{ steps.meta.outputs.version }}
+        run: |
+          asset="nidle-v${VERSION}.zip"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$asset" --clobber
+          else
+            gh release create "$TAG" "$asset" --title "$TAG" --generate-notes
+          fi

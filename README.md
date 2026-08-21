@@ -90,9 +90,23 @@ The only outstanding milestone:
 
 ---
 
+## Install (from a release)
+
+Every tagged release ships a ready-to-load zip — no Node toolchain, no
+build step.
+
+1. Download `nidle-v<version>.zip` from the
+   [Releases page](https://github.com/aibotwizard/nidle/releases).
+2. Unzip it anywhere.
+3. Open Figma **desktop** (the web app cannot load dev plugins).
+4. Menu → **Plugins → Development → Import plugin from manifest…** and
+   pick `manifest.json` from the unzipped folder.
+
+---
+
 ## Install (development)
 
-Nidle ships as source. To run it in Figma desktop:
+To build from source instead:
 
 1. **Clone the repo.**
    ```sh
@@ -126,6 +140,26 @@ cd plugin
 npm test         # DTCG parse, alias resolve, planForFiles (64 tests)
 npm run typecheck
 ```
+
+### Releasing
+
+Releases are cut by CI ([`.github/workflows/release.yml`](.github/workflows/release.yml)).
+The tag carries the version and must match `plugin/package.json`:
+
+```sh
+# bump "version" in plugin/package.json first, then:
+git tag v0.1.0
+git push origin v0.1.0
+```
+
+The workflow re-runs typecheck and the test suite, builds a fresh
+bundle, packages `manifest.json` + `dist/` + README + LICENSE into
+`nidle-v<version>.zip`, and attaches it to a new GitHub Release. If any
+check fails no release is created — delete the tag, fix, and re-tag.
+
+Every push and pull request runs the same checks plus a guard that the
+committed `plugin/dist/` still matches a fresh build
+([`.github/workflows/ci.yml`](.github/workflows/ci.yml)).
 
 ---
 
