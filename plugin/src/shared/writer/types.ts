@@ -1,12 +1,13 @@
 import type { CollectionName } from "../mapping/toFigma.js";
 
-export type FigmaVarType = "COLOR" | "FLOAT";
+export type FigmaVarType = "COLOR" | "FLOAT" | "STRING";
 
 export type FigmaRgba = { r: number; g: number; b: number; a: number };
 
 export type FigmaValue =
   | FigmaRgba
   | number
+  | string
   | { kind: "alias"; variableHandle: VariableHandle };
 
 export type CollectionHandle = {

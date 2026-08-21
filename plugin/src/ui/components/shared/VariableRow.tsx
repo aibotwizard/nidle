@@ -5,7 +5,7 @@ function RowIcon({
   type,
   sample,
 }: {
-  type: "COLOR" | "FLOAT";
+  type: VariableOp["resolvedType"];
   sample: ValueSpec | undefined;
 }) {
   if (type === "COLOR" && sample?.kind === "literal") {
@@ -20,7 +20,7 @@ function ModeValueSpan({
   showModeTag,
 }: {
   mv: ModeValue;
-  type: "COLOR" | "FLOAT";
+  type: VariableOp["resolvedType"];
   showModeTag: boolean;
 }) {
   return (

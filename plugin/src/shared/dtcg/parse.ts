@@ -10,6 +10,33 @@ const SUPPORTED_TYPES: ReadonlySet<DtcgType> = new Set([
   "color",
   "dimension",
   "number",
+  "text",
+]);
+
+/**
+ * Tokens Studio numeric `$type` names, folded into the DTCG `dimension`
+ * grammar (ADR-0015). Values that don't fit the grammar (`%`, `auto`)
+ * still warn and drop under D-4. Composite and string TS types
+ * (`boxShadow`, `typography`, `text`, `fontFamilies`) stay unsupported.
+ */
+const TOKENS_STUDIO_DIMENSION_TYPES: ReadonlySet<string> = new Set([
+  "spacing",
+  "sizing",
+  "borderRadius",
+  "borderWidth",
+  "fontSizes",
+  "fontWeights",
+  "lineHeights",
+  "letterSpacing",
+]);
+
+/** Tokens Studio string-valued `$type` names, folded into `text` and
+ *  emitted as Figma STRING variables (ADR-0016). */
+const TOKENS_STUDIO_STRING_TYPES: ReadonlySet<string> = new Set([
+  "text",
+  "fontFamilies",
+  "textDecoration",
+  "other",
 ]);
 
 function isLeaf(node: unknown): node is DtcgLeaf {
@@ -110,12 +137,17 @@ function walk(
     if (key.startsWith("$")) continue;
     const nextTrail = [...trail, key];
     if (isLeaf(child)) {
-      const t = child.$type as DtcgType;
+      const declared = String(child.$type);
+      const t = TOKENS_STUDIO_DIMENSION_TYPES.has(declared)
+        ? "dimension"
+        : TOKENS_STUDIO_STRING_TYPES.has(declared)
+          ? "text"
+          : (child.$type as DtcgType);
       if (!SUPPORTED_TYPES.has(t)) {
         warnings.push({
           file,
           path: nextTrail.join("/"),
-          reason: `unsupported $type "${child.$type}" (MVP supports color, dimension, number)`,
+          reason: `unsupported $type "${child.$type}" (supported: color, dimension, number, text)`,
         });
         continue;
       }
@@ -139,6 +171,17 @@ function normalizeValue(
   // resolver step can decide whether to keep or substitute them.
   if (isAliasValue(raw)) return raw;
 
+  if (type === "text") {
+    if (typeof raw !== "string") {
+      warnings.push({
+        file,
+        path: trail.join("/"),
+        reason: "text value must be a string or an alias",
+      });
+      return null;
+    }
+    return raw;
+  }
   if (type === "color") {
     if (typeof raw !== "string") {
       warnings.push({
@@ -152,7 +195,27 @@ function normalizeValue(
   }
   if (type === "dimension") {
     const px = dimensionToPx(raw);
-    if (px !== null) return px;
+    if (px !== null) {
+      // `em` is converted as if it were rem (deviation D-3, ADR-0011);
+      // the token is kept, but the conversion is surfaced, not silent.
+      if (typeof raw === "string" && /em\s*$/i.test(raw.trim()) && !/rem\s*$/i.test(raw.trim())) {
+        warnings.push({
+          file,
+          path: trail.join("/"),
+          reason: `em treated as rem: "${raw}" → ${px}px (1em = 16px, ADR-0011)`,
+        });
+      }
+      // `%` becomes a unitless fraction (150% → 1.5, ADR-0016); the
+      // token is kept, but the conversion is surfaced, not silent.
+      if (typeof raw === "string" && /%\s*$/.test(raw.trim())) {
+        warnings.push({
+          file,
+          path: trail.join("/"),
+          reason: `percent treated as a fraction: "${raw}" → ${px} (ADR-0016)`,
+        });
+      }
+      return px;
+    }
     warnings.push({
       file,
       path: trail.join("/"),
@@ -162,8 +225,10 @@ function normalizeValue(
     return null;
   }
   if (type === "number") {
-    if (typeof raw === "number") return raw;
-    if (typeof raw === "string" && Number.isFinite(parseFloat(raw))) {
+    if (typeof raw === "number" && Number.isFinite(raw)) return raw;
+    // Strict grammar, matching dimensionToPx sans unit — parseFloat
+    // would silently accept trailing garbage like "12abc" (D-6).
+    if (typeof raw === "string" && /^-?\d*\.?\d+$/.test(raw.trim())) {
       return parseFloat(raw);
     }
     warnings.push({
@@ -183,17 +248,19 @@ export const REM_BASE_PX = 16;
 
 /**
  * Coerce a DTCG dimension `$value` into a px number.
- * Accepts: number; "16"; "16px"; "1rem"; "1.5em" (case-insensitive, optional
- * whitespace between number and unit). Returns null for anything else.
+ * Accepts: number; "16"; "16px"; "1rem"; "1.5em"; "150%" → 1.5
+ * (case-insensitive, optional whitespace between number and unit).
+ * Returns null for anything else.
  */
 export function dimensionToPx(raw: unknown): number | null {
   if (typeof raw === "number") return Number.isFinite(raw) ? raw : null;
   if (typeof raw !== "string") return null;
-  const m = raw.trim().match(/^(-?\d*\.?\d+)\s*(px|rem|em)?$/i);
+  const m = raw.trim().match(/^(-?\d*\.?\d+)\s*(px|rem|em|%)?$/i);
   if (!m) return null;
   const n = parseFloat(m[1]!);
   if (!Number.isFinite(n)) return null;
   const unit = (m[2] ?? "").toLowerCase();
+  if (unit === "%") return n / 100;
   return unit === "rem" || unit === "em" ? n * REM_BASE_PX : n;
 }
 

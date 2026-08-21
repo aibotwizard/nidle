@@ -36,6 +36,25 @@ describe("TokenIntake.fromUploads", () => {
     expect(warnings[0]!.reason).toMatch(/unsupported/);
   });
 
+  it("announces Tokens Studio combined-export expansion in warnings (D-5)", () => {
+    const { files, warnings } = fromUploads([
+      {
+        path: "tokens.json",
+        json: {
+          $metadata: { tokenSetOrder: ["core", "Scheme/Light"] },
+          core: { black: { $type: "color", $value: "#000000" } },
+          "Scheme/Light": { bg: { $type: "color", $value: "#FFFFFF" } },
+        },
+      },
+    ]);
+    expect(files.map((f) => f.file)).toEqual(["core", "Scheme/Light"]);
+    expect(
+      warnings.some((w) =>
+        /Tokens Studio combined export .*2 token sets/.test(w.reason),
+      ),
+    ).toBe(true);
+  });
+
   it("preserves file ordering from input", () => {
     const { files } = fromUploads([
       { path: "z.json", json: {} },

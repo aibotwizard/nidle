@@ -1,9 +1,11 @@
-import type { VariablePlan } from "../shared/mapping/toFigma.js";
+import { mergeWithDefaults, type VariablePlan } from "../shared/mapping/toFigma.js";
 import { write } from "../shared/writer/variableWriter.js";
 import { createFigmaApiLive } from "./figmaApiLive.js";
 import type { StoredSettings, ToCode, ToUI } from "./messages.js";
 
-const SETTINGS_KEY = "boppli.settings.v1";
+const SETTINGS_KEY = "nidle.settings.v1";
+// Pre-rename installs stored under the old project name; migrated on read.
+const LEGACY_SETTINGS_KEY = "boppli.settings.v1";
 
 figma.showUI(__html__, { width: 480, height: 668, themeColors: true });
 
@@ -45,9 +47,17 @@ function post(msg: ToUI): void {
 }
 
 async function readSettings(): Promise<void> {
-  const raw = await figma.clientStorage.getAsync(SETTINGS_KEY);
-  const settings: StoredSettings =
-    raw && typeof raw === "object" ? (raw as StoredSettings) : {};
+  let raw = await figma.clientStorage.getAsync(SETTINGS_KEY);
+  if (raw === undefined) {
+    raw = await figma.clientStorage.getAsync(LEGACY_SETTINGS_KEY);
+    if (raw !== undefined) {
+      await figma.clientStorage.setAsync(SETTINGS_KEY, raw);
+      await figma.clientStorage.deleteAsync(LEGACY_SETTINGS_KEY);
+    }
+  }
+  // Same whitelist as the UI side — corrupt stored values fall back to
+  // their defaults before they ever cross the boundary (FR-906).
+  const settings: StoredSettings = mergeWithDefaults(raw);
   post({ type: "settings", settings });
 }
 

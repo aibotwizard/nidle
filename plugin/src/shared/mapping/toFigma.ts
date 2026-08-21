@@ -5,7 +5,14 @@ import {
 } from "../dtcg/resolve.js";
 import type { ParseWarning, Token } from "../dtcg/types.js";
 
-export type CollectionName = "Primitives" | "Semantic" | "Components";
+/**
+ * Folder routing lands every file in one of three base collections;
+ * semantic theme groups may then split into their own collections
+ * (`Semantic-Color-Scheme`, `Semantic-Appearance`, `Semantic-<Dir>`),
+ * so the final collection name is an open string.
+ */
+export type BaseCollection = "Primitives" | "Semantic" | "Components";
+export type CollectionName = string;
 
 export type Separator = "slash" | "dot";
 
@@ -21,6 +28,25 @@ export const DEFAULT_SETTINGS: MappingSettings = {
   updateExisting: true,
 };
 
+/**
+ * Merge a stored payload (possibly partial, possibly stale, possibly
+ * corrupt) with the defaults, dropping unknown values. The single point
+ * of trust for what a valid `MappingSettings` looks like — used on BOTH
+ * sides of the postMessage boundary (req-0002 / FR-906).
+ */
+export function mergeWithDefaults(raw: unknown): MappingSettings {
+  if (!raw || typeof raw !== "object") return { ...DEFAULT_SETTINGS };
+  const r = raw as Partial<MappingSettings>;
+  return {
+    refMode: r.refMode === "resolve" ? "resolve" : "keepAlias",
+    separator: r.separator === "dot" ? "dot" : "slash",
+    updateExisting:
+      typeof r.updateExisting === "boolean"
+        ? r.updateExisting
+        : DEFAULT_SETTINGS.updateExisting,
+  };
+}
+
 export type CollectionPlan = {
   name: CollectionName;
   /** First entry is the default mode. */
@@ -30,7 +56,7 @@ export type CollectionPlan = {
 export type VariableOp = {
   collection: CollectionName;
   name: string;
-  resolvedType: "COLOR" | "FLOAT";
+  resolvedType: "COLOR" | "FLOAT" | "STRING";
   values: ModeValue[];
   source: { file: string; path: string };
   op: "create" | "createOrUpdate";
@@ -84,13 +110,13 @@ const SEMANTIC_TOPS = new Set([
 ]);
 
 export function collectionForFile(path: string): {
-  collection: CollectionName;
+  collection: BaseCollection;
   fallbackWarning?: ParseWarning;
 } {
   const top = (path.split("/")[0] ?? "").toLowerCase();
   if (PRIMITIVES_TOPS.has(top)) return { collection: "Primitives" };
   if (SEMANTIC_TOPS.has(top)) return { collection: "Semantic" };
-  if (top === "components") return { collection: "Components" };
+  if (top === "components" || top === "component") return { collection: "Components" };
   if (!path.includes("/")) return { collection: "Primitives" };
   return {
     collection: "Primitives",
@@ -111,11 +137,39 @@ export function basenameMode(path: string): string {
   return base.length === 0 ? base : base[0]!.toUpperCase() + base.slice(1);
 }
 
-const ORDERED_COLLECTIONS: CollectionName[] = [
+const BASE_ORDER: BaseCollection[] = [
   "Primitives",
   "Semantic",
   "Components",
 ];
+
+/**
+ * Mode-switcher recognition for the semantic split (Jira: OpenUI
+ * productionisation, AC 1.1). A themed group whose mode set matches an
+ * entry becomes that collection, with the modes in the listed order —
+ * the first is the collection's default mode.
+ */
+const SEMANTIC_SPLITS: { name: CollectionName; modes: string[] }[] = [
+  { name: "Semantic-Color-Scheme", modes: ["Light", "Dark"] },
+  { name: "Semantic-Appearance", modes: ["Desktop", "Tablet"] },
+];
+
+function finalCollectionFor(base: BaseCollection, group: ThemeGroup): CollectionName {
+  if (base !== "Semantic" || group.kind !== "themed") return base;
+  const modes = group.files.map((f) => basenameMode(f.file).toLowerCase()).sort();
+  const split = SEMANTIC_SPLITS.find(
+    (s) =>
+      s.modes.length === modes.length &&
+      [...s.modes].map((m) => m.toLowerCase()).sort().every((m, i) => m === modes[i]),
+  );
+  if (split) return split.name;
+  // AC 1.2: any other mode switcher gets its own collection, named from
+  // the directory that grouped it.
+  const dirBase = group.dir.split("/").pop() ?? "";
+  return dirBase
+    ? `Semantic-${dirBase[0]!.toUpperCase()}${dirBase.slice(1)}`
+    : "Semantic";
+}
 
 export function planForFiles(
   filesIn: FileTokens[],
@@ -123,15 +177,37 @@ export function planForFiles(
 ): VariablePlan {
   const warnings: ParseWarning[] = [];
 
-  const byCollection = new Map<CollectionName, FileTokens[]>();
-  const fileCollection = new Map<string, CollectionName>();
+  const byBase = new Map<BaseCollection, FileTokens[]>();
   for (const f of filesIn) {
     const { collection, fallbackWarning } = collectionForFile(f.file);
     if (fallbackWarning) warnings.push(fallbackWarning);
-    fileCollection.set(f.file, collection);
-    const list = byCollection.get(collection) ?? [];
+    const list = byBase.get(collection) ?? [];
     list.push(f);
-    byCollection.set(collection, list);
+    byBase.set(collection, list);
+  }
+
+  // Theme groups are detected per base collection, then each group is
+  // assigned its final collection (semantic groups may split). Alias
+  // targets must use the final assignment, so fileCollection is built
+  // from the groups, not from the routing table.
+  const fileCollection = new Map<string, CollectionName>();
+  const byFinal = new Map<CollectionName, ThemeGroup[]>();
+  const finalOrder: CollectionName[] = [];
+  for (const base of BASE_ORDER) {
+    const cFiles = byBase.get(base);
+    if (!cFiles || cFiles.length === 0) continue;
+    for (const detected of detectThemeGroups(base, cFiles)) {
+      const cname = finalCollectionFor(base, detected);
+      const group: ThemeGroup = { ...detected, collection: cname };
+      const list = byFinal.get(cname);
+      if (list) {
+        list.push(group);
+      } else {
+        byFinal.set(cname, [group]);
+        finalOrder.push(cname);
+      }
+      for (const f of group.files) fileCollection.set(f.file, cname);
+    }
   }
 
   const allTokens = filesIn.flatMap((f) => f.tokens);
@@ -158,18 +234,16 @@ export function planForFiles(
   const variables: VariableOp[] = [];
   const allThemeGroups: ThemeGroup[] = [];
 
-  for (const cname of ORDERED_COLLECTIONS) {
-    const cFiles = byCollection.get(cname);
-    if (!cFiles || cFiles.length === 0) continue;
-
-    const themeGroups = detectThemeGroups(cname, cFiles);
+  for (const cname of finalOrder) {
+    const themeGroups = byFinal.get(cname)!;
     allThemeGroups.push(...themeGroups);
-    const modeNames = pickModeNames(themeGroups);
+    const modeNames = pickModeNames(cname, themeGroups);
 
     collectionPlans.push({ name: cname, modes: modeNames });
 
     const opByName = new Map<string, VariableOp>();
     for (const group of themeGroups) {
+      const touched = new Set<string>();
       for (const f of group.files) {
         const modeName = group.kind === "themed" ? basenameMode(f.file) : "Value";
         for (const tok of f.tokens) {
@@ -177,8 +251,8 @@ export function planForFiles(
           if (!r) continue;
 
           const emittedName = emitName(r.name, settings.separator);
-          const resolvedType: "COLOR" | "FLOAT" =
-            r.type === "color" ? "COLOR" : "FLOAT";
+          const resolvedType: VariableOp["resolvedType"] =
+            r.type === "color" ? "COLOR" : r.type === "text" ? "STRING" : "FLOAT";
 
           let valueSpec: ValueSpec;
           if (r.value.kind === "literal") {
@@ -214,7 +288,41 @@ export function planForFiles(
             });
             continue;
           }
+          if (existing.values.some((v) => v.mode === modeName)) {
+            warnings.push({
+              file: f.file,
+              path: tok.name,
+              reason: `token "${emittedName}" already defined for mode "${modeName}" — first definition wins`,
+            });
+            continue;
+          }
           existing.values.push({ mode: modeName, value: valueSpec });
+          touched.add(emittedName);
+        }
+      }
+
+      // Theme sets may drift (a token present in Light but not Dark).
+      // Fill the missing modes from the collection's default mode so no
+      // mode is left at Figma's initial value — surfaced per token.
+      if (group.kind === "themed") {
+        const groupModes = group.files
+          .map((f) => basenameMode(f.file))
+          .sort((a, b) => modeNames.indexOf(a) - modeNames.indexOf(b));
+        for (const name of touched) {
+          const op = opByName.get(name)!;
+          const have = new Set(op.values.map((v) => v.mode));
+          const srcMode = groupModes.find((m) => have.has(m));
+          const src = op.values.find((v) => v.mode === srcMode);
+          if (!src) continue;
+          for (const m of groupModes) {
+            if (have.has(m)) continue;
+            op.values.push({ mode: m, value: src.value });
+            warnings.push({
+              file: op.source.file,
+              path: op.source.path,
+              reason: `token "${op.name}" missing in mode "${m}" — value filled from mode "${srcMode}"`,
+            });
+          }
         }
       }
     }
@@ -242,7 +350,7 @@ export function detectThemeGroups(
   }
   const out: ThemeGroup[] = [];
   for (const [dir, list] of byDir.entries()) {
-    if (list.length > 1 && sameShape(list)) {
+    if (isThemedSiblings(list)) {
       out.push({ kind: "themed", collection, dir, files: list });
     } else {
       for (const f of list) {
@@ -258,21 +366,30 @@ function dirOf(path: string): string {
   return i < 0 ? "" : path.slice(0, i);
 }
 
-function shapeKey(tokens: Token[]): string {
-  return tokens.map((t) => `${t.name}:${t.type}`).sort().join("|");
-}
-
-function sameShape(files: FileTokens[]): boolean {
-  if (files.length < 2) return true;
-  const first = shapeKey(files[0]!.tokens);
-  if (first.length === 0) return false;
-  for (let i = 1; i < files.length; i++) {
-    if (shapeKey(files[i]!.tokens) !== first) return false;
+/**
+ * Sibling files are theme variants when the `(name, type)` shape they
+ * share covers at least half of the smallest file. Real theme sets
+ * drift a little (a token present only in Light) but still share most
+ * of their shape; unrelated sibling sets share none, because each is
+ * namespaced under its own group. Observed margins: ≥0.83 for theme
+ * sets vs 0.0 for unrelated ones (ADR-0015).
+ */
+function isThemedSiblings(files: FileTokens[]): boolean {
+  if (files.length < 2) return false;
+  const shapes = files.map(
+    (f) => new Set(f.tokens.map((t) => `${t.name}:${t.type}`)),
+  );
+  if (shapes.some((s) => s.size === 0)) return false;
+  const [first, ...rest] = shapes;
+  let shared = 0;
+  for (const key of first!) {
+    if (rest.every((s) => s.has(key))) shared++;
   }
-  return true;
+  const smallest = Math.min(...shapes.map((s) => s.size));
+  return shared / smallest >= 0.5;
 }
 
-function pickModeNames(groups: ThemeGroup[]): string[] {
+function pickModeNames(cname: CollectionName, groups: ThemeGroup[]): string[] {
   const names: string[] = [];
   let hasSingle = false;
   for (const g of groups) {
@@ -287,6 +404,18 @@ function pickModeNames(groups: ThemeGroup[]): string[] {
   }
   if (hasSingle && !names.includes("Value")) names.push("Value");
   if (names.length === 0) names.push("Value");
+
+  // Recognised splits carry a canonical mode order; the first mode is
+  // the collection default (Light for Color-Scheme, Desktop for
+  // Appearance), regardless of file upload order.
+  const split = SEMANTIC_SPLITS.find((s) => s.name === cname);
+  if (split) {
+    names.sort(
+      (a, b) =>
+        split.modes.findIndex((m) => m.toLowerCase() === a.toLowerCase()) -
+        split.modes.findIndex((m) => m.toLowerCase() === b.toLowerCase()),
+    );
+  }
 
   const defaultIdx = names.findIndex((n) => n.toLowerCase() === "default");
   if (defaultIdx > 0) {

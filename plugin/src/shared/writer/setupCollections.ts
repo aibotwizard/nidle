@@ -18,6 +18,7 @@ export function setupCollections(
   const all = api.listCollections();
   const out = new Map<CollectionName, ResolvedCollection>();
 
+  let done = 0;
   for (const c of plan.collections) {
     const existing = all.find((vc) => vc.handle.name === c.name);
     const collection = existing ?? api.createCollection(c.name);
@@ -57,10 +58,13 @@ export function setupCollections(
     }
 
     out.set(c.name, { handle: collection.handle, modeIds, skippedModes });
+    done++;
     const addedModes = modeIds.size;
     const writeTarget = `default → "${wantedFirst}" (${initialMode.modeId})`;
     onProgress({
-      pct: 5,
+      // Local fraction of this phase; the writer maps it onto the
+      // global scale (req-0003 / FR-805).
+      pct: Math.round((done / plan.collections.length) * 100),
       line: modesLimited
         ? `Collection "${c.name}" ready (${addedModes} of ${c.modes.length} modes, ${writeTarget} — upgrade Figma plan for multi-mode support)`
         : `Collection "${c.name}" ready (${addedModes} mode${addedModes === 1 ? "" : "s"}: ${[...modeIds.keys()].join(", ")}; ${writeTarget})`,

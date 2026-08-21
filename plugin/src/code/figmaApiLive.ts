@@ -49,7 +49,7 @@ export async function createFigmaApiLive(): Promise<FigmaApi> {
   };
 
   const toFigmaValue = (value: FigmaValue): VariableValue => {
-    if (typeof value === "number") return value;
+    if (typeof value === "number" || typeof value === "string") return value;
     if ("kind" in value) {
       const target = mustVariable(value.variableHandle.id);
       return figma.variables.createVariableAlias(target);

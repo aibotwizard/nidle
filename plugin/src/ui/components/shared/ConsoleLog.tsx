@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import type { LogTone } from "../../../code/messages.js";
-import type { LogLine } from "../../state/appState.js";
+import type { LogLine } from "../../state/machine.js";
 
 function toneColor(t: LogTone): string {
   return {

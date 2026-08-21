@@ -29,8 +29,10 @@ writes Figma variables that are 1:1 traceable back to that source.
   Figma's `clientStorage` on the user's machine.
 - Translating to formats other than Figma Variables (no Style Dictionary
   output, no CSS export).
-- Supporting token formats other than W3C DTCG 2025.10. Older Tokens Studio
-  format files are out of scope.
+- Supporting token formats other than W3C DTCG 2025.10 and Tokens Studio
+  **combined exports** (the latter ratified 2026-08-20 by the req-0005
+  ruling, [decisions/0015-tokens-studio-ratified.md](decisions/0015-tokens-studio-ratified.md);
+  amends the original exclusion). Other legacy formats remain out of scope.
 
 ---
 
@@ -87,10 +89,14 @@ pick a subfolder, and reach Step 2 with the file tree populated.
 
 ### M4 — Multi-collection layout & update semantics — **[implemented]**
 
-- **[implemented]** Three-collection layout: **Primitives**, **Semantic**,
-  **Components**, driven by folder convention (`core/`, `semantic/`,
-  `components/`). Unknown top-level folders fall back to Primitives with a
-  warning.
+- **[implemented — amended 2026-08-19, ADR-0014]** Collection layout
+  driven by folder convention (`core/`, `semantic/`, `components/` or
+  `component/`): **Primitives**, **Components**, and one collection per
+  semantic mode switcher — `Semantic-Color-Scheme` (Light/Dark, default
+  Light), `Semantic-Appearance` (Desktop/Tablet, default Desktop),
+  `Semantic-<Dir>` for other switchers, plain `Semantic` for unthemed
+  files (req-0006). Unknown top-level folders fall back to Primitives
+  with a warning.
 - **[implemented]** Group separator setting (`slash` ↔ `dot`) applied to
   variable names, persisted in `clientStorage`.
 - **[implemented]** "Update existing variables" toggle — match by

@@ -4,7 +4,7 @@ A Figma plugin that imports **W3C Design Tokens (DTCG · 2025.10)** from a
 folder of JSON files and creates the matching **Figma variables** in your
 file — preserving names, groupings, types, **aliases**, and **themes**.
 
-Boppli is a deterministic, auditable bridge from token JSON to Figma. No
+Nidle is a deterministic, auditable bridge from token JSON to Figma. No
 editing tokens in Figma, no cloud sync, no telemetry.
 
 ---
@@ -92,12 +92,12 @@ The only outstanding milestone:
 
 ## Install (development)
 
-Boppli ships as source. To run it in Figma desktop:
+Nidle ships as source. To run it in Figma desktop:
 
 1. **Clone the repo.**
    ```sh
-   git clone https://github.com/aibotwizard/boppli.git
-   cd boppli/plugin
+   git clone https://github.com/aibotwizard/nidle.git
+   cd nidle/plugin
    ```
 2. **Install dependencies.** Requires Node 18+.
    ```sh
@@ -166,7 +166,7 @@ All three settings persist across runs.
 
 ### Supported token shape
 
-Boppli supports two input formats:
+Nidle supports two input formats:
 
 **W3C DTCG · 2025.10** — a folder of `.json` files, each a plain token
 group. `$type` ∈ `{color, dimension, number}`. Aliases
@@ -204,7 +204,7 @@ raw value** it becomes a literal `#1E1E1E`.
 ## Project structure
 
 ```
-boppli/
+nidle/
 ├── plugin/                  # The shipping plugin
 │   ├── manifest.json
 │   ├── build.mjs            # esbuild — bundles UI + sandbox + inlines HTML

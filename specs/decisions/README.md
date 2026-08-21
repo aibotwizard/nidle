@@ -50,3 +50,8 @@ references the old one and flip the old one's status to
 | [0010](0010-async-writer-yields-per-progress-tick.md) | Async writer yields to the event loop on each progress tick | accepted | AO |
 | [0011](0011-dimensions-coerced-to-px-rem-base-16.md) | Dimensions are coerced to px; 1rem = 16px | accepted | AO, PO |
 | [0012](0012-react-ui-layer.md) | React UI layer | accepted | AO, UX |
+| [0013](0013-ui-deep-module-rewrite.md) | UI deep-module rewrite: consolidated layout, settings in the reducer | accepted | AO, UX |
+| [0014](0014-semantic-split-by-mode-switcher.md) | Semantic collections split per mode switcher | accepted | AO, PO |
+| [0015](0015-tokens-studio-ratified.md) | Tokens Studio combined exports ratified into scope | accepted | PO, AO |
+| [0016](0016-string-variables-and-percent-fractions.md) | STRING variables and percent-as-fraction dimensions | accepted | PO, AO |
+| [0017](0017-tester-feedback-ui-fixes.md) | Acceptance-test UI fixes: wired upload button, visible parse errors, uncapped log | accepted | PO, UX |

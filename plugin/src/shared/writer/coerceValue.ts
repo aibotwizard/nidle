@@ -7,6 +7,7 @@ import type { FigmaValue, VariableHandle } from "./types.js";
  *
  * - alias  → `{kind:'alias', variableHandle}` once the target is in scope.
  * - color  → `{r,g,b,a}` 0–1 floats from a hex or rgb()/rgba() string.
+ * - string → unchanged (STRING variables, ADR-0016).
  * - number → unchanged.
  *
  * Returns `null` when coercion is impossible (missing alias target, bad
@@ -25,6 +26,9 @@ export function coerceValue(
   if (op.resolvedType === "COLOR") {
     if (typeof spec.value !== "string") return null;
     return parseColor(spec.value);
+  }
+  if (op.resolvedType === "STRING") {
+    return typeof spec.value === "string" ? spec.value : null;
   }
   return typeof spec.value === "number" ? spec.value : null;
 }

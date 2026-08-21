@@ -104,15 +104,16 @@ describe("VariableWriter — M2 aliases & themes", () => {
     refMode: "keepAlias",
   });
 
-  it("creates Primitives + Semantic collections; Semantic carries Light + Dark modes", async () => {
+  it("creates Primitives + Semantic-Color-Scheme; the split carries Light + Dark, Light first", async () => {
     const api = createInMemoryFigmaApi();
     await write(plan, api);
     expect(api.collections.map((c) => c.name).sort()).toEqual([
       "Primitives",
-      "Semantic",
+      "Semantic-Color-Scheme",
     ]);
-    const semantic = api.collections.find((c) => c.name === "Semantic")!;
-    expect(semantic.modes.map((m) => m.name).sort()).toEqual(["Dark", "Light"]);
+    const semantic = api.collections.find((c) => c.name === "Semantic-Color-Scheme")!;
+    // Exact order: mode[0] lands on Figma's default mode.
+    expect(semantic.modes.map((m) => m.name)).toEqual(["Light", "Dark"]);
   });
 
   it("writes an alias edge per mode, pointing at the target variable's handle", async () => {
@@ -216,12 +217,46 @@ describe("VariableWriter — pre-existing Figma state", () => {
 
   it("renames the initial mode when the plan's first mode differs", async () => {
     const api = createInMemoryFigmaApi({
-      collections: [{ name: "Semantic", modes: ["OldMode"] }],
+      collections: [{ name: "Semantic-Color-Scheme", modes: ["OldMode"] }],
     });
     const themed = loadFixture("m2-aliases-themes");
     const themedPlan = planForFiles(themed, DEFAULT_SETTINGS);
     await write(themedPlan, api);
-    const semantic = api.collections.find((c) => c.name === "Semantic")!;
-    expect(semantic.modes.map((m) => m.name).sort()).toEqual(["Dark", "Light"]);
+    const semantic = api.collections.find((c) => c.name === "Semantic-Color-Scheme")!;
+    expect(semantic.modes.map((m) => m.name)).toEqual(["Light", "Dark"]);
+  });
+});
+
+describe("STRING variables (ADR-0016)", () => {
+  const fts = loadFixture("tokens-studio");
+  const plan = planForFiles(fts, DEFAULT_SETTINGS);
+
+  it("creates STRING variables and writes string values through", async () => {
+    const api = createInMemoryFigmaApi();
+    const report = await write(plan, api);
+    const v = api.variables.find((x) => x.name === "post/core/scheme-name")!;
+    expect(v.type).toBe("STRING");
+    expect(api.read("Primitives", "post/core/scheme-name", "Value")).toBe("light");
+    expect(report.errors).toEqual([]);
+  });
+});
+
+describe("progress budget (req-0003 / FR-805)", () => {
+  it("percentages are monotonic; setup no longer posts identical mid-scale values", async () => {
+    const fts = loadFixture("m4-multi-collection");
+    const plan = planForFiles(fts, DEFAULT_SETTINGS);
+    const api = createInMemoryFigmaApi();
+    const pcts: number[] = [];
+    await write(plan, api, { onProgress: (p) => pcts.push(p.pct) });
+
+    expect(pcts.length).toBeGreaterThan(4);
+    for (let i = 1; i < pcts.length; i++) {
+      expect(pcts[i]!, `pct[${i}]`).toBeGreaterThanOrEqual(pcts[i - 1]!);
+    }
+    expect(pcts[0]).toBe(0);
+    expect(pcts[pcts.length - 1]).toBe(100);
+    // Three collections used to emit three consecutive "5%" events; the
+    // setup phase now advances within its 0–10 budget.
+    expect(new Set(pcts.slice(1, 4)).size).toBe(3);
   });
 });

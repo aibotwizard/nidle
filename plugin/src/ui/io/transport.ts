@@ -1,15 +1,17 @@
 import type { ToCode, ToUI } from "../../code/messages.js";
-import type {
-  SandboxTransport,
-  ToUIHandler,
-  ToUIUnsubscribe,
-} from "./types.js";
+
+export type ToUIHandler = (msg: ToUI) => void;
 
 /**
- * Sole owner of `window.message` for the iframe. Multiple subscribers
- * (settings store, main UI loop) can register handlers; each gets every
- * message until it unsubscribes.
+ * Two-way bus between the UI and the sandbox, and the sole owner of the
+ * iframe's `window.message` listener. Subscribers each get every message
+ * until they unsubscribe.
  */
+export type SandboxTransport = {
+  postCode(msg: ToCode): void;
+  addMessageListener(handler: ToUIHandler): () => void;
+};
+
 export function createSandboxTransport(): SandboxTransport {
   const handlers = new Set<ToUIHandler>();
 
@@ -21,7 +23,7 @@ export function createSandboxTransport(): SandboxTransport {
 
   return {
     postCode: (msg: ToCode) => parent.postMessage({ pluginMessage: msg }, "*"),
-    addMessageListener: (handler: ToUIHandler): ToUIUnsubscribe => {
+    addMessageListener: (handler: ToUIHandler) => {
       handlers.add(handler);
       return () => handlers.delete(handler);
     },
