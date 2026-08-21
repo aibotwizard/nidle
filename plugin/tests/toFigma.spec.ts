@@ -429,3 +429,70 @@ describe("tokens-studio fixture — combined export end to end", () => {
     expect(reasons.some((r) => /filled from mode "Light"/.test(r))).toBe(true);
   });
 });
+
+/**
+ * Regression: group-level `$type` (DTCG §6.3) used to make the parser
+ * treat primitives as groups and drop them silently, so every alias
+ * pointing at them failed with "does not match any token" while the
+ * real cause — the missing target — was never reported.
+ */
+describe("planForFiles — group-level $type across collections", () => {
+  const uploads = [
+    {
+      path: "core/sizes.json",
+      json: {
+        sizes: { $type: "dimension", "1": { $value: "1px" }, "4": { $value: "4px" } },
+        font: { $type: "dimension", "font-size": { "12": { $value: "0.75rem" } } },
+      },
+    },
+    {
+      path: "semantic/semantic.json",
+      json: {
+        semantic: {
+          text: { h3: { "letter-spacing": { $type: "dimension", $value: "0.5px" } } },
+        },
+      },
+    },
+    {
+      path: "component/form-control.json",
+      json: {
+        "form-control": {
+          spacing: { xs: { $type: "dimension", $value: "{sizes.4}" } },
+          // untyped — takes its target's type via the reference (§5.2.2)
+          "line-height": { $value: "{font.font-size.12}" },
+          "letter-spacing": { $value: "{semantic.text.h3.letter-spacing}" },
+        },
+      },
+    },
+  ];
+  const { files } = fromUploads(uploads);
+  const plan = planForFiles(files, DEFAULT_SETTINGS);
+
+  it("emits every primitive rather than dropping it", () => {
+    const primitives = plan.variables
+      .filter((v) => v.collection === "Primitives")
+      .map((v) => v.name)
+      .sort();
+    expect(primitives).toEqual(["font/font-size/12", "sizes/1", "sizes/4"]);
+  });
+
+  it("resolves the aliases that previously reported no matching token", () => {
+    expect(plan.warnings).toEqual([]);
+    const byName = Object.fromEntries(plan.variables.map((v) => [v.name, v]));
+    expect(byName["form-control/spacing/xs"]!.values[0]!.value).toEqual({
+      kind: "alias",
+      targetCollection: "Primitives",
+      targetName: "sizes/4",
+    });
+    expect(byName["form-control/letter-spacing"]!.values[0]!.value).toEqual({
+      kind: "alias",
+      targetCollection: "Semantic",
+      targetName: "semantic/text/h3/letter-spacing",
+    });
+  });
+
+  it("types untyped alias tokens from their target", () => {
+    const lh = plan.variables.find((v) => v.name === "form-control/line-height")!;
+    expect(lh.resolvedType).toBe("FLOAT");
+  });
+});

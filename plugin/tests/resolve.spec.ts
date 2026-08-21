@@ -107,3 +107,39 @@ describe("resolveTokens — error cases", () => {
     expect(warnings.some((w) => /type dimension, expected color/.test(w.reason))).toBe(true);
   });
 });
+
+describe("resolveTokens — untyped alias tokens (spec §5.2.2 rule 1)", () => {
+  it("adopts the target's type instead of warning", () => {
+    const { tokens, warnings } = resolveTokens(
+      [
+        t("sizes/1", "dimension", 1, "core/sizes.json"),
+        t("btn/border-width", null, "{sizes.1}", "component/btn.json"),
+      ],
+      "keepAlias",
+    );
+    expect(warnings).toEqual([]);
+    expect(tokens.find((x) => x.name === "btn/border-width")).toEqual({
+      name: "btn/border-width",
+      type: "dimension",
+      file: "component/btn.json",
+      value: { kind: "alias", targetName: "sizes/1" },
+    });
+  });
+
+  it("adopts the chain-tip type through a multi-hop untyped chain", () => {
+    const { tokens } = resolveTokens(
+      [
+        t("color/blue/500", "color", "#0D99FF"),
+        t("accent/primary", null, "{color.blue.500}"),
+        t("btn/bg", null, "{accent.primary}"),
+      ],
+      "resolve",
+    );
+    expect(tokens.find((x) => x.name === "btn/bg")).toEqual({
+      name: "btn/bg",
+      type: "color",
+      file: "x.json",
+      value: { kind: "literal", value: "#0D99FF" },
+    });
+  });
+});

@@ -39,13 +39,27 @@ const TOKENS_STUDIO_STRING_TYPES: ReadonlySet<string> = new Set([
   "other",
 ]);
 
+/** A node is a token as soon as it carries `$value`; `$type` may be
+ *  inherited from an ancestor group (DTCG §5.2.2). */
 function isLeaf(node: unknown): node is DtcgLeaf {
   return (
-    !!node &&
-    typeof node === "object" &&
-    "$value" in (node as object) &&
-    "$type" in (node as object)
+    !!node && typeof node === "object" && "$value" in (node as object)
   );
+}
+
+/** The `$type` a node declares, if any — raw, so an unsupported name
+ *  still reaches the leaf and warns there rather than vanishing. */
+function declaredType(node: unknown): string | undefined {
+  if (!node || typeof node !== "object") return undefined;
+  const raw = (node as Record<string, unknown>).$type;
+  return raw === undefined ? undefined : String(raw);
+}
+
+/** Fold Tokens Studio `$type` aliases onto the internal vocabulary. */
+function foldType(declared: string): DtcgType {
+  if (TOKENS_STUDIO_DIMENSION_TYPES.has(declared)) return "dimension";
+  if (TOKENS_STUDIO_STRING_TYPES.has(declared)) return "text";
+  return declared as DtcgType;
 }
 
 function isGroup(node: unknown): node is DtcgGroup {
@@ -132,22 +146,42 @@ function walk(
   file: string,
   out: Token[],
   warnings: ParseResult["warnings"],
+  inherited?: string,
 ): void {
+  // A group's own `$type` becomes the default for everything below it.
+  const scopeType = declaredType(node) ?? inherited;
   for (const [key, child] of Object.entries(node)) {
     if (key.startsWith("$")) continue;
     const nextTrail = [...trail, key];
     if (isLeaf(child)) {
-      const declared = String(child.$type);
-      const t = TOKENS_STUDIO_DIMENSION_TYPES.has(declared)
-        ? "dimension"
-        : TOKENS_STUDIO_STRING_TYPES.has(declared)
-          ? "text"
-          : (child.$type as DtcgType);
+      const own = declaredType(child);
+      if (own === undefined && isAliasValue(child.$value)) {
+        // A reference outranks an inherited group `$type` (DTCG §5.2.2):
+        // only the resolver can see what the target is.
+        out.push({
+          name: nextTrail.join("/"),
+          type: null,
+          value: child.$value,
+          file,
+        });
+        continue;
+      }
+      const declared = own ?? scopeType;
+      if (declared === undefined) {
+        warnings.push({
+          file,
+          path: nextTrail.join("/"),
+          reason:
+            "no $type on the token or any ancestor group — type cannot be determined",
+        });
+        continue;
+      }
+      const t = foldType(declared);
       if (!SUPPORTED_TYPES.has(t)) {
         warnings.push({
           file,
           path: nextTrail.join("/"),
-          reason: `unsupported $type "${child.$type}" (supported: color, dimension, number, text)`,
+          reason: `unsupported $type "${declared}" (supported: color, dimension, number, text)`,
         });
         continue;
       }
@@ -155,7 +189,7 @@ function walk(
       if (value === null) continue;
       out.push({ name: nextTrail.join("/"), type: t, value, file });
     } else if (isGroup(child)) {
-      walk(child, nextTrail, file, out, warnings);
+      walk(child, nextTrail, file, out, warnings, scopeType);
     }
   }
 }
