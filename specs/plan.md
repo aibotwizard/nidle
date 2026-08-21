@@ -22,8 +22,15 @@ outstanding from the original five-milestone roadmap.
   `Keep as alias` ↔ `Resolve to raw value` setting; see
   [decisions/0009-keepalias-preserves-direct-hop.md](decisions/0009-keepalias-preserves-direct-hop.md)
   for the chain-handling decision (M2).
-- **[implemented]** Theme detection: sibling files with matching shape
-  fold into modes of one collection (M2).
+- **[implemented]** Theme detection: sibling files sharing ≥ 50% of
+  the smallest file's shape fold into modes of one collection, with
+  missing modes filled from the default mode (M2, relaxed by
+  ADR-0015).
+- **[implemented]** Tokens Studio combined exports: set expansion with
+  console notice, numeric `$type` folding into `dimension` (ratified
+  2026-08-20, req-0005 / ADR-0015), string `$type` folding into `text`
+  → Figma STRING variables, and `%` dimensions as unitless fractions
+  (ADR-0016).
 - **[implemented]** Three-collection layout driven by folder convention
   (`core/`, `semantic/`, `components/`) (M4).
 - **[implemented]** Group separator (slash ↔ dot) and update-existing
@@ -171,10 +178,13 @@ display.
    mode substitutes the chain-tip literal.
 2. Wire the reference-handling toggle in the settings sheet to the plan
    computation; persist via `clientStorage` round-trip.
-3. Theme detection: sibling files in the same directory whose `(name,
-   type)` shape matches across every file become **modes** of one
-   collection (each file = one mode, named from the basename). A lone
-   file in a directory keeps the single `Value` mode. Heuristic in
+3. Theme detection: sibling files in the same directory whose shared
+   `(name, type)` shape covers ≥ 50% of the smallest file become
+   **modes** of one collection (each file = one mode, named from the
+   basename; exact match originally — relaxed by ADR-0015 because real
+   theme sets drift). A token missing from a mode has that mode filled
+   from the default mode, with a per-token warning. A lone file in a
+   directory keeps the single `Value` mode. Heuristic in
    `mapping/toFigma.ts` and surfaced on `plan.themeGroups`.
 4. Settings sheet: render theme → mode mapping list (read-only —
    editability deferred; the heuristic has not yet misfired in practice).
@@ -278,8 +288,11 @@ existing ones.
   `fetch` honors the browser's trust store, which on macOS may reject
   internal CAs. May need a "trust this cert" guide rather than code.
 - **Theme detection heuristic** could misfire when two files happen to
-  share structure but are not themes. M2 ships the heuristic; if it
-  bites, the M4 settings UI lets the user override.
+  share structure but are not themes. ADR-0015 relaxed exact matching
+  to a ≥ 50% overlap threshold; measured margins on real data are wide
+  (≥ 83% for true themes, 0% for unrelated sets), but a misfire would
+  now fold rather than split — if it bites, the settings UI override
+  remains the escape hatch.
 
 ## 7. Out of scope (cross-reference to constitution non-goals)
 

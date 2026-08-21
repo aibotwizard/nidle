@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { App } from "../../src/ui/App.js";
 import { createInMemoryStorage } from "../../src/ui/io/settingsIO.js";
@@ -108,6 +108,44 @@ describe("App — upload → preview → import flow", () => {
     // "Import another" resets to step 1.
     fireEvent.click(screen.getByRole("button", { name: "Import another" }));
     expect(screen.getByText("Connect a token source")).toBeTruthy();
+  });
+
+  it("opens the system picker from the Upload folder button", () => {
+    renderApp();
+    // fireEvent.click dispatches a MouseEvent without calling .click(), so
+    // the spy only sees the programmatic forward to the hidden input.
+    const clicks = vi.spyOn(HTMLInputElement.prototype, "click");
+    fireEvent.click(screen.getByRole("button", { name: "Upload folder" }));
+    expect(clicks).toHaveBeenCalledOnce();
+    clicks.mockRestore();
+  });
+
+  it("surfaces parse failures on step 4 and colors the warnings stat red", async () => {
+    const { fake } = renderApp();
+    const broken = new File(["{ nope"], "broken.json", { type: "application/json" });
+    Object.defineProperty(broken, "webkitRelativePath", {
+      value: "tokens/core/broken.json",
+      configurable: true,
+    });
+    const input = document.querySelector<HTMLInputElement>('input[type="file"]')!;
+    fireEvent.change(input, {
+      target: { files: [...fixtureFiles("m1-primitives"), broken] },
+    });
+    await screen.findByText("2 files detected");
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    fireEvent.click(screen.getByRole("button", { name: "Preview import" }));
+    fireEvent.click(screen.getByRole("button", { name: "Import 6 variables" }));
+
+    // The parse failure is visible in the step 4 console…
+    expect(screen.getByText(/core\/broken\.json — invalid JSON/)).toBeTruthy();
+
+    act(() => fake.emit({ type: "done", created: 6, updated: 0, errors: [] }));
+    expect(screen.getByText("Import complete")).toBeTruthy();
+    // …survives `done`, and the warnings stat counts it in red.
+    expect(screen.getByText(/core\/broken\.json — invalid JSON/)).toBeTruthy();
+    const warnBig = document.querySelectorAll<HTMLElement>(".done-stats .cell .big")[3]!;
+    expect(warnBig.textContent).toBe("1");
+    expect(warnBig.style.color).toBe("rgb(255, 139, 139)");
   });
 
   it("surfaces a sandbox error on step 4", async () => {

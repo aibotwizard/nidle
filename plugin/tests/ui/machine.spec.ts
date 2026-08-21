@@ -24,12 +24,12 @@ describe("machine — done", () => {
     });
   });
 
-  it("previews at most 12 errors and appends a truncation line", () => {
+  it("echoes every error line — no truncation", () => {
     const errors = Array.from({ length: 15 }, (_, i) => err(i));
     const s = reducer(importing(), { type: "done", created: 0, updated: 0, errors });
     const texts = s.log.map((l) => l.text);
-    expect(texts.filter((t) => t.includes("— boom"))).toHaveLength(12);
-    expect(texts).toContain("…and 3 more");
+    expect(texts.filter((t) => t.includes("— boom"))).toHaveLength(15);
+    expect(texts.some((t) => t.includes("more"))).toBe(false);
     expect(s.log[s.log.length - 1]).toEqual({
       text: "✓ Imported 0 created, 0 updated (15 errors)",
       tone: "err",
@@ -39,14 +39,25 @@ describe("machine — done", () => {
 });
 
 describe("machine — import lifecycle", () => {
-  it("importStarted replaces the log with the seed line", () => {
+  it("importStarted seeds the log with intake warnings ahead of the send line", () => {
+    const warning = { text: "core/broken.json — invalid JSON", tone: "err" as const };
     const s = reducer(
-      { ...initialState, log: [{ text: "old", tone: "dim" }] },
+      { ...initialState, intakeWarnings: [warning], log: [{ text: "old", tone: "dim" }] },
       { type: "importStarted", count: 7 },
     );
     expect(s.phase).toEqual({ kind: "importing", progress: 0 });
     expect(stepOf(s.phase)).toBe(4);
-    expect(s.log).toEqual([{ text: "Sending 7 variables to Figma…", tone: "dim" }]);
+    expect(s.log).toEqual([warning, { text: "Sending 7 variables to Figma…", tone: "dim" }]);
+  });
+
+  it("filesLoaded replaces intake warnings instead of accumulating them", () => {
+    const w1 = { text: "a.json — invalid JSON", tone: "err" as const };
+    const w2 = { text: "b.json — invalid JSON", tone: "err" as const };
+    const first = reducer(initialState, { type: "filesLoaded", files: [], warningLines: [w1] });
+    expect(first.intakeWarnings).toEqual([w1]);
+    expect(first.log).toEqual([]);
+    const second = reducer(first, { type: "filesLoaded", files: [], warningLines: [w2] });
+    expect(second.intakeWarnings).toEqual([w2]);
   });
 
   it("progress updates only while importing", () => {

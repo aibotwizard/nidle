@@ -1,0 +1,7 @@
+{
+  "tokens": 10,
+  "collections": [
+    { "name": "Primitives", "modes": ["Value"], "variableCount": 5 },
+    { "name": "Semantic-Color-Scheme", "modes": ["Light", "Dark"], "variableCount": 3 }
+  ]
+}

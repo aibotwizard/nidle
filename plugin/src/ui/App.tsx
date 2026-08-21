@@ -63,8 +63,8 @@ export function App({
     const { uploads, parseFailures } = await intake;
     const { files: fileTokens, warnings } = fromUploads(uploads);
 
-    // Surface parse-time warnings (unsupported $type, malformed values) so
-    // the user sees them on Step 1 — they won't otherwise show until Step 3.
+    // Parse-time warnings (unsupported $type, malformed values, unreadable
+    // JSON) — kept in state and echoed on the Step 4 console.
     const warningLines: LogLine[] = [
       ...warnings.map((w) => ({
         text: `${w.file} · ${w.path} — ${w.reason}`,
@@ -130,7 +130,7 @@ export function App({
             done={done}
             progress={progress}
             result={result}
-            planWarnings={plan.warnings.length}
+            warnings={plan.warnings.length + state.intakeWarnings.length}
             log={state.log}
           />
         )}

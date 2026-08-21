@@ -41,6 +41,9 @@ export type State = {
   phase: Phase;
   files: FileMeta[];
   log: LogLine[];
+  // Parse-time warnings from the last upload; seeded into the log when an
+  // import starts so they stay visible on the Step 4 console.
+  intakeWarnings: LogLine[];
   settings: MappingSettings;
   settingsOpen: boolean;
 };
@@ -49,6 +52,7 @@ export const initialState: State = {
   phase: { kind: "source" },
   files: [],
   log: [],
+  intakeWarnings: [],
   settings: { ...DEFAULT_SETTINGS },
   settingsOpen: false,
 };
@@ -86,14 +90,10 @@ const NAV_PHASE: Record<1 | 2 | 3, Phase> = {
   3: { kind: "preview" },
 };
 
-// Only this many per-token errors are echoed to the console; the full
-// list still lands in `result.errors` for the Step 4 stats.
-const ERROR_PREVIEW = 12;
-
 export function reducer(state: State, action: Action): State {
   switch (action.type) {
     case "filesLoaded":
-      return { ...state, files: action.files, log: [...state.log, ...action.warningLines] };
+      return { ...state, files: action.files, intakeWarnings: action.warningLines };
     case "fileToggled":
       return {
         ...state,
@@ -107,7 +107,10 @@ export function reducer(state: State, action: Action): State {
       return {
         ...state,
         phase: { kind: "importing", progress: 0 },
-        log: [{ text: `Sending ${action.count} variables to Figma…`, tone: "dim" }],
+        log: [
+          ...state.intakeWarnings,
+          { text: `Sending ${action.count} variables to Figma…`, tone: "dim" },
+        ],
       };
     case "progress":
       if (state.phase.kind !== "importing") return state;
@@ -117,13 +120,13 @@ export function reducer(state: State, action: Action): State {
         log: [...state.log, { text: action.line, tone: action.tone }],
       };
     case "done": {
-      const lines: LogLine[] = action.errors.slice(0, ERROR_PREVIEW).map((err) => ({
+      // Every error is echoed — the console scrolls, and hiding errors
+      // behind a "…and N more" line proved unacceptable in acceptance
+      // testing (ADR-0017).
+      const lines: LogLine[] = action.errors.map((err) => ({
         text: `${err.source.file} · ${err.variable} — ${err.reason}`,
         tone: "err" as const,
       }));
-      if (action.errors.length > ERROR_PREVIEW) {
-        lines.push({ text: `…and ${action.errors.length - ERROR_PREVIEW} more`, tone: "err" });
-      }
       lines.push({
         text:
           `✓ Imported ${action.created} created, ${action.updated} updated` +

@@ -7,14 +7,14 @@ export function StepImport({
   done,
   progress,
   result,
-  planWarnings,
+  warnings,
   log,
 }: {
   importing: boolean;
   done: boolean;
   progress: number;
   result: ImportResult | undefined;
-  planWarnings: number;
+  warnings: number;
   log: LogLine[];
 }) {
   const errors = result?.errors.length ?? 0;
@@ -70,8 +70,8 @@ export function StepImport({
               </div>
             </div>
             <div className="cell">
-              <div className="big" style={{ color: "#6b6b6b" }}>
-                {planWarnings}
+              <div className="big" style={{ color: warnings ? "#ff8b8b" : "#6b6b6b" }}>
+                {warnings}
               </div>
               <div className="lbl">
                 parse

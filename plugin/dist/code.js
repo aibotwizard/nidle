@@ -208,6 +208,9 @@
       if (typeof spec.value !== "string") return null;
       return parseColor(spec.value);
     }
+    if (op.resolvedType === "STRING") {
+      return typeof spec.value === "string" ? spec.value : null;
+    }
     return typeof spec.value === "number" ? spec.value : null;
   }
 
@@ -327,7 +330,7 @@
       return v;
     };
     const toFigmaValue = (value) => {
-      if (typeof value === "number") return value;
+      if (typeof value === "number" || typeof value === "string") return value;
       if ("kind" in value) {
         const target = mustVariable(value.variableHandle.id);
         return figma.variables.createVariableAlias(target);

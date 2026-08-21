@@ -1,4 +1,6 @@
-export type DtcgType = "color" | "dimension" | "number";
+/** Internal type vocabulary: the three DTCG MVP types plus `text`,
+ *  the fold target for Tokens Studio string types (ADR-0016). */
+export type DtcgType = "color" | "dimension" | "number" | "text";
 
 export type DtcgLeaf = {
   $type: DtcgType;
@@ -14,8 +16,9 @@ export type Token = {
   /** Slash-joined path inside the file, e.g. "color/blue/500". */
   name: string;
   type: DtcgType;
-  /** Either a literal value (string for color, number for dimension/number)
-   *  or an alias reference `{color.blue.500}` left unresolved. */
+  /** Either a literal value (string for color/text, number for
+   *  dimension/number) or an alias reference `{color.blue.500}` left
+   *  unresolved. */
   value: string | number;
   /** Source file this token came from. */
   file: string;

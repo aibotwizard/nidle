@@ -1,6 +1,11 @@
 # REQ-0005 — Tokens Studio support: scope ruling required
 
-- **Status:** proposed — **awaiting PO decision**
+- **Status:** resolved — **ratified** (option 1) on 2026-08-20, see
+  [../decisions/0015-tokens-studio-ratified.md](../decisions/0015-tokens-studio-ratified.md).
+  All four acceptance criteria are met: ruling recorded (ADR-0015),
+  constitution §1 and D-5 agree with the code, fixture
+  `plugin/tests/fixtures/tokens-studio/` exercises the path end to
+  end, and the expansion emits a console notice.
 - **Date raised:** 2026-08-18
 - **Raised by:** architecture review
 - **Milestone:** none — this is a scope question, not a work item

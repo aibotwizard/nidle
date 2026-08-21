@@ -305,3 +305,127 @@ describe("M4 — unknown top-level folder", () => {
     expect(plan.warnings.some((w) => /unknown top-level folder/.test(w.reason))).toBe(true);
   });
 });
+
+// ============================================================
+// req-0005 / ADR-0015 — tolerant theme matching
+// ============================================================
+
+describe("tolerant theme matching — sibling files with shape drift", () => {
+  const color = (hex: string) => ({ $type: "color", $value: hex });
+  // Light has one token Dark lacks; shared shape is 2/2 of the smallest file.
+  const uploads: RawUpload[] = [
+    {
+      path: "scheme/light.json",
+      json: { bg: color("#FFFFFF"), fg: color("#000000"), inputBg: color("#EEEEEE") },
+    },
+    { path: "scheme/dark.json", json: { bg: color("#000000"), fg: color("#FFFFFF") } },
+  ];
+  const plan = planForFiles(fileTokens(uploads), DEFAULT_SETTINGS);
+
+  it("still folds drifted siblings into one themed collection", () => {
+    const c = plan.collections.find((x) => x.name === "Semantic-Color-Scheme");
+    expect(c?.modes).toEqual(["Light", "Dark"]);
+    expect(plan.variables).toHaveLength(3);
+  });
+
+  it("fills a token's missing mode from the default mode and warns", () => {
+    const op = plan.variables.find((v) => v.name === "inputBg")!;
+    expect(findMode(op.values, "Dark")?.value).toEqual(
+      findMode(op.values, "Light")?.value,
+    );
+    expect(
+      plan.warnings.some(
+        (w) => w.path === "inputBg" && /filled from mode "Light"/.test(w.reason),
+      ),
+    ).toBe(true);
+  });
+
+  it("keeps disjoint sibling files as singles", () => {
+    const disjoint: RawUpload[] = [
+      { path: "elements/body.json", json: { bodyFg: color("#111111") } },
+      { path: "elements/link.json", json: { linkFg: color("#0D99FF") } },
+    ];
+    const p = planForFiles(fileTokens(disjoint), DEFAULT_SETTINGS);
+    expect(p.collections.map((c) => c.name)).toEqual(["Semantic"]);
+    expect(p.collections[0]!.modes).toEqual(["Value"]);
+    expect(p.warnings).toEqual([]);
+  });
+
+  it("keeps siblings sharing less than half the smallest file's shape as singles", () => {
+    const low: RawUpload[] = [
+      { path: "utilities/spacing.json", json: { a: color("#111111"), b: color("#222222"), c: color("#333333") } },
+      { path: "utilities/border.json", json: { a: color("#444444"), x: color("#555555"), y: color("#666666") } },
+    ];
+    const p = planForFiles(fileTokens(low), DEFAULT_SETTINGS);
+    expect(p.collections[0]!.modes).toEqual(["Value"]);
+  });
+});
+
+describe("duplicate token names in the same mode warn instead of silently overwriting", () => {
+  const color = (hex: string) => ({ $type: "color", $value: hex });
+  // Different directories → separate groups, but both route to Semantic,
+  // so both land in mode "Value" under the same variable name.
+  const uploads: RawUpload[] = [
+    { path: "semantic/base/a.json", json: { accent: color("#111111") } },
+    { path: "semantic/extra/b.json", json: { accent: color("#222222") } },
+  ];
+  const plan = planForFiles(fileTokens(uploads), DEFAULT_SETTINGS);
+
+  it("keeps the first definition and warns about the second", () => {
+    const op = plan.variables.find((v) => v.name === "accent")!;
+    expect(op.values).toHaveLength(1);
+    expect(op.values[0]!.value).toEqual({ kind: "literal", value: "#111111" });
+    expect(
+      plan.warnings.some(
+        (w) => w.file === "semantic/extra/b.json" && /first definition wins/.test(w.reason),
+      ),
+    ).toBe(true);
+  });
+});
+
+// ============================================================
+// req-0005 / ADR-0015 — Tokens Studio combined-export fixture
+// ============================================================
+
+describe("tokens-studio fixture — combined export end to end", () => {
+  const { uploads, expected } = loadFixture("tokens-studio");
+  const intake = fromUploads(uploads);
+  const plan = planForFiles(intake.files, DEFAULT_SETTINGS);
+
+  it("expands the combined file and parses the expected token count", () => {
+    const total = intake.files.reduce((n, f) => n + f.tokens.length, 0);
+    expect(total).toBe(expected.tokens);
+  });
+
+  it("produces the expected collections, modes, and variable counts", () => {
+    expect(
+      plan.collections.map((c) => ({
+        name: c.name,
+        modes: c.modes,
+        variableCount: plan.variables.filter((v) => v.collection === c.name).length,
+      })),
+    ).toEqual(expected.collections);
+  });
+
+  it("keeps cross-set aliases pointing at their final collection", () => {
+    const fg = plan.variables.find((v) => v.name === "post/scheme/color/fg")!;
+    expect(findMode(fg.values, "Light")?.value).toEqual({
+      kind: "alias",
+      targetCollection: "Primitives",
+      targetName: "post/core/color/black",
+    });
+  });
+
+  it("plans text tokens as STRING variables", () => {
+    const name = plan.variables.find((v) => v.name === "post/core/scheme-name")!;
+    expect(name.resolvedType).toBe("STRING");
+    expect(name.values[0]!.value).toEqual({ kind: "literal", value: "light" });
+  });
+
+  it("surfaces every drop or fill in warnings — nothing silent", () => {
+    const reasons = [...intake.warnings, ...plan.warnings].map((w) => w.reason);
+    expect(reasons.some((r) => /Tokens Studio combined export/.test(r))).toBe(true);
+    expect(reasons.some((r) => /dimension value must be/.test(r))).toBe(true);
+    expect(reasons.some((r) => /filled from mode "Light"/.test(r))).toBe(true);
+  });
+});

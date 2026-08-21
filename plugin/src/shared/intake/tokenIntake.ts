@@ -12,9 +12,19 @@ import type { IntakeResult, RawUpload } from "./types.js";
  * Pure: no DOM, no Figma, no I/O.
  */
 export function fromUploads(uploads: RawUpload[]): IntakeResult {
-  const figmaUploads: UploadedFile[] = uploads.flatMap((u) =>
-    expandTokensStudio({ path: u.path, json: u.json }),
-  );
+  const notices: IntakeResult["warnings"] = [];
+  const figmaUploads: UploadedFile[] = uploads.flatMap((u) => {
+    const expanded = expandTokensStudio({ path: u.path, json: u.json });
+    // D-5: the expansion must be visible in the console, never silent.
+    if (expanded.length !== 1 || expanded[0]!.path !== u.path) {
+      notices.push({
+        file: u.path,
+        path: "(root)",
+        reason: `Tokens Studio combined export detected — expanded into ${expanded.length} token sets`,
+      });
+    }
+    return expanded;
+  });
   const { tokens, warnings } = parseFiles(figmaUploads);
 
   const tokensByFile = new Map<string, Token[]>();
@@ -26,5 +36,5 @@ export function fromUploads(uploads: RawUpload[]): IntakeResult {
     tokens: tokensByFile.get(fu.path) ?? [],
   }));
 
-  return { files, warnings, parseFailures: [] };
+  return { files, warnings: [...notices, ...warnings], parseFailures: [] };
 }

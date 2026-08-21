@@ -56,7 +56,7 @@ export type CollectionPlan = {
 export type VariableOp = {
   collection: CollectionName;
   name: string;
-  resolvedType: "COLOR" | "FLOAT";
+  resolvedType: "COLOR" | "FLOAT" | "STRING";
   values: ModeValue[];
   source: { file: string; path: string };
   op: "create" | "createOrUpdate";
@@ -243,6 +243,7 @@ export function planForFiles(
 
     const opByName = new Map<string, VariableOp>();
     for (const group of themeGroups) {
+      const touched = new Set<string>();
       for (const f of group.files) {
         const modeName = group.kind === "themed" ? basenameMode(f.file) : "Value";
         for (const tok of f.tokens) {
@@ -250,8 +251,8 @@ export function planForFiles(
           if (!r) continue;
 
           const emittedName = emitName(r.name, settings.separator);
-          const resolvedType: "COLOR" | "FLOAT" =
-            r.type === "color" ? "COLOR" : "FLOAT";
+          const resolvedType: VariableOp["resolvedType"] =
+            r.type === "color" ? "COLOR" : r.type === "text" ? "STRING" : "FLOAT";
 
           let valueSpec: ValueSpec;
           if (r.value.kind === "literal") {
@@ -287,7 +288,41 @@ export function planForFiles(
             });
             continue;
           }
+          if (existing.values.some((v) => v.mode === modeName)) {
+            warnings.push({
+              file: f.file,
+              path: tok.name,
+              reason: `token "${emittedName}" already defined for mode "${modeName}" — first definition wins`,
+            });
+            continue;
+          }
           existing.values.push({ mode: modeName, value: valueSpec });
+          touched.add(emittedName);
+        }
+      }
+
+      // Theme sets may drift (a token present in Light but not Dark).
+      // Fill the missing modes from the collection's default mode so no
+      // mode is left at Figma's initial value — surfaced per token.
+      if (group.kind === "themed") {
+        const groupModes = group.files
+          .map((f) => basenameMode(f.file))
+          .sort((a, b) => modeNames.indexOf(a) - modeNames.indexOf(b));
+        for (const name of touched) {
+          const op = opByName.get(name)!;
+          const have = new Set(op.values.map((v) => v.mode));
+          const srcMode = groupModes.find((m) => have.has(m));
+          const src = op.values.find((v) => v.mode === srcMode);
+          if (!src) continue;
+          for (const m of groupModes) {
+            if (have.has(m)) continue;
+            op.values.push({ mode: m, value: src.value });
+            warnings.push({
+              file: op.source.file,
+              path: op.source.path,
+              reason: `token "${op.name}" missing in mode "${m}" — value filled from mode "${srcMode}"`,
+            });
+          }
         }
       }
     }
@@ -315,7 +350,7 @@ export function detectThemeGroups(
   }
   const out: ThemeGroup[] = [];
   for (const [dir, list] of byDir.entries()) {
-    if (list.length > 1 && sameShape(list)) {
+    if (isThemedSiblings(list)) {
       out.push({ kind: "themed", collection, dir, files: list });
     } else {
       for (const f of list) {
@@ -331,18 +366,27 @@ function dirOf(path: string): string {
   return i < 0 ? "" : path.slice(0, i);
 }
 
-function shapeKey(tokens: Token[]): string {
-  return tokens.map((t) => `${t.name}:${t.type}`).sort().join("|");
-}
-
-function sameShape(files: FileTokens[]): boolean {
-  if (files.length < 2) return true;
-  const first = shapeKey(files[0]!.tokens);
-  if (first.length === 0) return false;
-  for (let i = 1; i < files.length; i++) {
-    if (shapeKey(files[i]!.tokens) !== first) return false;
+/**
+ * Sibling files are theme variants when the `(name, type)` shape they
+ * share covers at least half of the smallest file. Real theme sets
+ * drift a little (a token present only in Light) but still share most
+ * of their shape; unrelated sibling sets share none, because each is
+ * namespaced under its own group. Observed margins: ≥0.83 for theme
+ * sets vs 0.0 for unrelated ones (ADR-0015).
+ */
+function isThemedSiblings(files: FileTokens[]): boolean {
+  if (files.length < 2) return false;
+  const shapes = files.map(
+    (f) => new Set(f.tokens.map((t) => `${t.name}:${t.type}`)),
+  );
+  if (shapes.some((s) => s.size === 0)) return false;
+  const [first, ...rest] = shapes;
+  let shared = 0;
+  for (const key of first!) {
+    if (rest.every((s) => s.has(key))) shared++;
   }
-  return true;
+  const smallest = Math.min(...shapes.map((s) => s.size));
+  return shared / smallest >= 0.5;
 }
 
 function pickModeNames(cname: CollectionName, groups: ThemeGroup[]): string[] {

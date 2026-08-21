@@ -227,6 +227,20 @@ describe("VariableWriter — pre-existing Figma state", () => {
   });
 });
 
+describe("STRING variables (ADR-0016)", () => {
+  const fts = loadFixture("tokens-studio");
+  const plan = planForFiles(fts, DEFAULT_SETTINGS);
+
+  it("creates STRING variables and writes string values through", async () => {
+    const api = createInMemoryFigmaApi();
+    const report = await write(plan, api);
+    const v = api.variables.find((x) => x.name === "post/core/scheme-name")!;
+    expect(v.type).toBe("STRING");
+    expect(api.read("Primitives", "post/core/scheme-name", "Value")).toBe("light");
+    expect(report.errors).toEqual([]);
+  });
+});
+
 describe("progress budget (req-0003 / FR-805)", () => {
   it("percentages are monotonic; setup no longer posts identical mid-scale values", async () => {
     const fts = loadFixture("m4-multi-collection");

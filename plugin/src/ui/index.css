@@ -283,6 +283,8 @@ input:focus { outline: none; border-color: #0d99ff !important; }
 }
 .console .ln { display: flex; gap: 8px; }
 .console .ln .arr { color: #555; }
+/* Long messages wrap instead of clipping — errors must stay fully readable. */
+.console .ln span:last-child { min-width: 0; overflow-wrap: anywhere; }
 
 /* ===== Footer ===== */
 .footer {

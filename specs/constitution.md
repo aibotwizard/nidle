@@ -29,8 +29,10 @@ writes Figma variables that are 1:1 traceable back to that source.
   Figma's `clientStorage` on the user's machine.
 - Translating to formats other than Figma Variables (no Style Dictionary
   output, no CSS export).
-- Supporting token formats other than W3C DTCG 2025.10. Older Tokens Studio
-  format files are out of scope.
+- Supporting token formats other than W3C DTCG 2025.10 and Tokens Studio
+  **combined exports** (the latter ratified 2026-08-20 by the req-0005
+  ruling, [decisions/0015-tokens-studio-ratified.md](decisions/0015-tokens-studio-ratified.md);
+  amends the original exclusion). Other legacy formats remain out of scope.
 
 ---
 

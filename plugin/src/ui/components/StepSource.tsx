@@ -1,4 +1,4 @@
-import { useState, type DragEvent } from "react";
+import { useRef, useState, type DragEvent } from "react";
 import type { FileMeta } from "../state/machine.js";
 import { DetectedCheckIcon, UploadIcon, UploadIconLarge } from "./shared/icons.js";
 
@@ -12,6 +12,7 @@ export function StepSource({
   onDropTransfer: (dt: DataTransfer) => void;
 }) {
   const [dragging, setDragging] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const handleDrop = (e: DragEvent) => {
     e.preventDefault();
@@ -30,7 +31,7 @@ export function StepSource({
         variables.
       </div>
       <div className="seg">
-        <button>
+        <button onClick={() => inputRef.current?.click()}>
           {UploadIcon}
           Upload folder
         </button>
@@ -51,6 +52,7 @@ export function StepSource({
           <span className="mono">.json</span> supported
         </div>
         <input
+          ref={inputRef}
           type="file"
           multiple
           webkitdirectory=""
