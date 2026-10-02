@@ -21,6 +21,8 @@ export function fromUploads(uploads: RawUpload[]): IntakeResult {
         file: u.path,
         path: "(root)",
         reason: `Tokens Studio combined export detected — expanded into ${expanded.length} token sets`,
+        level: "notice",
+        summary: "Tokens Studio combined exports expanded into token sets",
       });
     }
     return expanded;

@@ -56,3 +56,6 @@ references the old one and flip the old one's status to
 | [0016](0016-string-variables-and-percent-fractions.md) | STRING variables and percent-as-fraction dimensions | accepted | PO, AO |
 | [0017](0017-tester-feedback-ui-fixes.md) | Acceptance-test UI fixes: wired upload button, visible parse errors, uncapped log | accepted | PO, UX |
 | [0018](0018-dtcg-type-inheritance.md) | DTCG `$type` inheritance from ancestor groups and alias targets | accepted | AO, PO |
+| [0019](0019-dtcg-object-dimensions-and-scalar-types.md) | DTCG 2025.10 object dimensions and the remaining scalar types | accepted | AO, PO |
+| [0020](0020-warning-severity-split.md) | Warnings carry a severity; Step 3 shows both stages | accepted | PO, AO, UX |
+| [0021](0021-composites-split-into-members.md) | Composites split into one variable per member | accepted | PO, AO |

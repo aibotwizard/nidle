@@ -59,16 +59,27 @@ export function App({
     return planForFiles(fts, state.settings);
   }, [state.files, state.settings]);
 
+  // Step 3 answers "what will this import lose?", so it needs the parse
+  // stage's warnings too — but only for the files still selected.
+  const previewWarnings = useMemo(() => {
+    const selected = new Set(state.files.filter((f) => f.selected).map((f) => f.path));
+    return [
+      ...state.parseWarnings.filter((w) => selected.has(w.file)),
+      ...plan.warnings,
+    ];
+  }, [state.parseWarnings, state.files, plan]);
+
   const handleIntake = async (intake: Promise<IntakeFiles>) => {
     const { uploads, parseFailures } = await intake;
     const { files: fileTokens, warnings } = fromUploads(uploads);
 
     // Parse-time warnings (unsupported $type, malformed values, unreadable
-    // JSON) — kept in state and echoed on the Step 4 console.
+    // JSON) — kept in state and echoed on the Step 4 console. Notices
+    // (conversions, theme fills) log dim: the token did import.
     const warningLines: LogLine[] = [
       ...warnings.map((w) => ({
         text: `${w.file} · ${w.path} — ${w.reason}`,
-        tone: "err" as const,
+        tone: (w.level === "notice" ? "dim" : "err") as LogLine["tone"],
       })),
       ...parseFailures.map((f) => ({
         text: `${f.path} — ${f.reason}`,
@@ -84,7 +95,7 @@ export function App({
     });
     files.sort((a, b) => (a.folder + a.name).localeCompare(b.folder + b.name));
 
-    dispatch({ type: "filesLoaded", files, warningLines });
+    dispatch({ type: "filesLoaded", files, warningLines, parseWarnings: warnings });
   };
 
   const handleStartImport = () => {
@@ -123,14 +134,21 @@ export function App({
             onToggleFile={(path) => dispatch({ type: "fileToggled", path })}
           />
         ) : step === 3 ? (
-          <StepPreview plan={plan} selectedCount={selectedCount} />
+          <StepPreview
+            plan={plan}
+            selectedCount={selectedCount}
+            warnings={previewWarnings}
+          />
         ) : (
           <StepImport
             importing={importing}
             done={done}
             progress={progress}
             result={result}
-            warnings={plan.warnings.length + state.intakeWarnings.length}
+            warnings={
+              plan.warnings.filter((w) => w.level !== "notice").length +
+              state.intakeWarnings.filter((l) => l.tone === "err").length
+            }
             log={state.log}
           />
         )}

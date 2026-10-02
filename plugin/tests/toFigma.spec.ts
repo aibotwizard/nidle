@@ -340,6 +340,12 @@ describe("tolerant theme matching — sibling files with shape drift", () => {
     ).toBe(true);
   });
 
+  it("marks the fill a notice — the token imported, nothing was lost", () => {
+    // Layered theme sets define a token in one mode only by design, so a
+    // fill must not read as a parse error (ADR-0020).
+    expect(plan.warnings.every((w) => w.level === "notice")).toBe(true);
+  });
+
   it("keeps disjoint sibling files as singles", () => {
     const disjoint: RawUpload[] = [
       { path: "elements/body.json", json: { bodyFg: color("#111111") } },

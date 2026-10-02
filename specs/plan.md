@@ -30,7 +30,17 @@ outstanding from the original five-milestone roadmap.
   console notice, numeric `$type` folding into `dimension` (ratified
   2026-08-20, req-0005 / ADR-0015), string `$type` folding into `text`
   → Figma STRING variables, and `%` dimensions as unitless fractions
-  (ADR-0016).
+  (ADR-0016). `$metadata.json` / `$themes.json` sidecars are skipped.
+- **[implemented]** Full DTCG 2025.10 scalar coverage: the object form
+  `{value, unit}` for `dimension` and `duration`, plus `fontWeight`
+  and `duration` → FLOAT and `fontFamily` / `strokeStyle` / `fontStyle`
+  → STRING (ADR-0019).
+- **[implemented]** Composites split into one variable per member —
+  `border` → color/width/style, `transition` →
+  duration/delay/timing-function, `cubicBezier` → one STRING — and
+  negated aliases (`"-{sizes.8}"`) resolve to a negative literal
+  (ADR-0021). Both shipped token sets now import every leaf. `shadow` /
+  `typography` / `gradient` have no member table yet (roadmap §6).
 - **[implemented]** Three-collection layout driven by folder convention
   (`core/`, `semantic/`, `components/`) (M4).
 - **[implemented]** Group separator (slash ↔ dot) and update-existing
@@ -41,6 +51,11 @@ outstanding from the original five-milestone roadmap.
 - **[implemented]** Streaming progress, per-token error reporting,
   settings persistence (M5 — shipped incidentally with the M1/M2
   architecture).
+- **[implemented]** Warnings carry a severity (ADR-0020): drops render
+  per token as `N parse warnings` in red on Step 3, conversions and theme
+  fills collapse to one line per kind in a muted `M notices` panel; both
+  panels are fed from the parse *and* plan stages, and the Step 4 console
+  keeps the per-token detail.
 - **[planned]** GitLab tab: the source segmented control shows Upload
   only; GitLab is not rendered until M3.
 
@@ -95,6 +110,8 @@ plugin/
       m1-primitives/
       m2-aliases-themes/
       m4-multi-collection/
+    assetCoverage.spec.ts   # whole-corpus gate: every leaf in assets/base and
+                            # assets/w3c-tokens reaches Figma, or is a listed skip
     parse.spec.ts       # DTCG parse + m1 planForFiles fixture coverage
     resolve.spec.ts     # alias resolver: chains, cycles, type mismatches
     toFigma.spec.ts     # M2 themes/aliases + M4 multi-collection fixtures

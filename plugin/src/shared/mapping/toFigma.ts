@@ -321,6 +321,11 @@ export function planForFiles(
               file: op.source.file,
               path: op.source.path,
               reason: `token "${op.name}" missing in mode "${m}" — value filled from mode "${srcMode}"`,
+              // Layered theme sets (Tokens Studio) legitimately define a
+              // token in one mode only; the fill is the correct value, so
+              // this is surfaced, not flagged as a problem.
+              level: "notice",
+              summary: `tokens missing in mode "${m}" — filled from mode "${srcMode}"`,
             });
           }
         }

@@ -1,4 +1,4 @@
-import { aliasPath, isAliasValue } from "./parse.js";
+import { aliasPath, isAliasValue, negatedAliasOf } from "./parse.js";
 import type { DtcgType, ParseWarning, Token } from "./types.js";
 
 export type ResolveMode = "keepAlias" | "resolve";
@@ -44,6 +44,51 @@ export function resolveTokens(
   const out: ResolvedToken[] = [];
 
   for (const t of tokens) {
+    // `-{alias}`: Figma has no computed variables, so the only way to keep
+    // the token is to read the target's literal and negate it. The alias
+    // edge cannot survive that (D-14), which is why it is surfaced.
+    const negated = negatedAliasOf(t.value);
+    if (negated !== null) {
+      const targetName = aliasName(negated);
+      const target = byName.get(targetName);
+      if (!target) {
+        warnings.push({
+          file: t.file,
+          path: t.name,
+          reason: `negated alias "${t.value}" → "${targetName}" does not match any token`,
+        });
+        continue;
+      }
+      const walked = chainTip(target, byName);
+      if ("error" in walked) {
+        warnings.push({ file: t.file, path: t.name, reason: walked.error });
+        continue;
+      }
+      const literal = walked.tip.value;
+      if (typeof literal !== "number") {
+        warnings.push({
+          file: t.file,
+          path: t.name,
+          reason: `negated alias "${t.value}" → "${walked.tip.name}" is not numeric, so it cannot be negated`,
+        });
+        continue;
+      }
+      out.push({
+        name: t.name,
+        type: (t.type ?? walked.tip.type)!,
+        file: t.file,
+        value: { kind: "literal", value: -literal },
+      });
+      warnings.push({
+        file: t.file,
+        path: t.name,
+        reason: `negated alias "${t.value}" resolved to ${-literal} — Figma cannot negate a reference, so no alias edge is kept (D-14)`,
+        level: "notice",
+        summary: "negated aliases resolved to negative literals",
+      });
+      continue;
+    }
+
     if (!isAliasValue(t.value)) {
       out.push({
         name: t.name,
@@ -56,39 +101,12 @@ export function resolveTokens(
     }
 
     // Walk the chain to validate it (terminates, no cycles, type matches).
-    const trail: string[] = [t.name];
-    const seen = new Set<string>([t.name]);
-    let cursor: Token | undefined = t;
-    let bad: { reason: string } | null = null;
-
-    while (cursor && isAliasValue(cursor.value)) {
-      const target = aliasName(cursor.value as string);
-      const next = byName.get(target);
-      if (!next) {
-        bad = {
-          reason: `alias "${cursor.value}" → "${target}" does not match any token`,
-        };
-        break;
-      }
-      if (seen.has(target)) {
-        bad = {
-          reason: `alias cycle: ${[...trail, target].join(" → ")}`,
-        };
-        break;
-      }
-      trail.push(target);
-      seen.add(target);
-      cursor = next;
-    }
-
-    if (bad || !cursor) {
-      warnings.push({
-        file: t.file,
-        path: t.name,
-        reason: bad?.reason ?? "alias did not resolve",
-      });
+    const walked = chainTip(t, byName);
+    if ("error" in walked) {
+      warnings.push({ file: t.file, path: t.name, reason: walked.error });
       continue;
     }
+    const cursor = walked.tip;
 
     // cursor is the literal-bearing chain tip; the immediate target is the
     // first hop named in t.value itself. An untyped token declared no
@@ -128,6 +146,36 @@ export function resolveTokens(
   }
 
   return { tokens: out, warnings };
+}
+
+/**
+ * Follow alias hops from `start` until a token bearing a literal, which is
+ * what validates the chain: it terminates, has no cycle, and its tip is
+ * the type every hop must agree with.
+ */
+function chainTip(
+  start: Token,
+  byName: Map<string, Token>,
+): { tip: Token } | { error: string } {
+  const trail: string[] = [start.name];
+  const seen = new Set<string>([start.name]);
+  let cursor: Token = start;
+  while (isAliasValue(cursor.value)) {
+    const target = aliasName(cursor.value);
+    const next = byName.get(target);
+    if (!next) {
+      return {
+        error: `alias "${cursor.value}" → "${target}" does not match any token`,
+      };
+    }
+    if (seen.has(target)) {
+      return { error: `alias cycle: ${[...trail, target].join(" → ")}` };
+    }
+    trail.push(target);
+    seen.add(target);
+    cursor = next;
+  }
+  return { tip: cursor };
 }
 
 /** "{color.blue.500}" → "color/blue/500" — DTCG aliases are dot-separated. */

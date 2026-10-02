@@ -32,6 +32,20 @@ export type ParseWarning = {
   file: string;
   path: string;
   reason: string;
+  /**
+   * `notice` — the token imported; a conversion or a theme fill is being
+   * surfaced so it isn't silent (constitution §3.2). Absent means the
+   * import lost something: a dropped token, an unresolved alias, a
+   * refused value.
+   */
+  level?: "notice";
+  /**
+   * Aggregation key for notices: identical for every warning that should
+   * collapse into one line on the preview step, and phrased to read after
+   * a count (`28× tokens missing in mode "Desktop"…`). Set on notices
+   * only; the per-token `reason` is still what the console logs.
+   */
+  summary?: string;
 };
 
 export type ParseResult = {
