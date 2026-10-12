@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { DEFAULT_SETTINGS } from "../src/shared/mapping/toFigma.js";
+import { DEFAULT_SETTINGS } from "../src/shared/settings.js";
 import {
   createInMemoryStorage,
   createPostMessageStorage,

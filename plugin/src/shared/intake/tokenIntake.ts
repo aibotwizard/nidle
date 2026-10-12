@@ -1,4 +1,4 @@
-import { expandTokensStudio, parseFiles, type UploadedFile } from "../dtcg/parse.js";
+import { expandTokensStudio, parseFiles } from "../dtcg/parse.js";
 import type { Token } from "../dtcg/types.js";
 import type { IntakeResult, RawUpload } from "./types.js";
 
@@ -13,8 +13,8 @@ import type { IntakeResult, RawUpload } from "./types.js";
  */
 export function fromUploads(uploads: RawUpload[]): IntakeResult {
   const notices: IntakeResult["warnings"] = [];
-  const figmaUploads: UploadedFile[] = uploads.flatMap((u) => {
-    const expanded = expandTokensStudio({ path: u.path, json: u.json });
+  const figmaUploads: RawUpload[] = uploads.flatMap((u) => {
+    const expanded = expandTokensStudio(u);
     // D-5: the expansion must be visible in the console, never silent.
     if (expanded.length !== 1 || expanded[0]!.path !== u.path) {
       notices.push({

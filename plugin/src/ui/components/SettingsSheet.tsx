@@ -1,9 +1,6 @@
 import type { ReactNode } from "react";
-import {
-  basenameMode,
-  type MappingSettings,
-  type ThemeGroup,
-} from "../../shared/mapping/toFigma.js";
+import type { MappingSettings } from "../../shared/settings.js";
+import { basenameMode, type ThemeGroup } from "../../shared/mapping/toFigma.js";
 import { CloseIcon } from "./shared/icons.js";
 import { Segmented } from "./shared/Segmented.js";
 import { Toggle } from "./shared/Toggle.js";

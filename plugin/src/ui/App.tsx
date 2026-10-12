@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useReducer } from "react";
-import { planForFiles, type FileTokens, type MappingSettings } from "../shared/mapping/toFigma.js";
+import type { MappingSettings } from "../shared/settings.js";
+import type { FileTokens } from "../shared/intake/types.js";
+import { planForFiles } from "../shared/mapping/toFigma.js";
 import { fromUploads } from "../shared/intake/tokenIntake.js";
 import type { SandboxTransport } from "./io/transport.js";
 import { mergeWithDefaults, type SettingsStorage } from "./io/settingsIO.js";

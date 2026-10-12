@@ -1,4 +1,5 @@
 import { isAliasValue, isNegatedAlias } from "./alias.js";
+import type { RawUpload } from "../intake/types.js";
 import type {
   DtcgGroup,
   DtcgLeaf,
@@ -135,14 +136,7 @@ function isGroup(node: unknown): node is DtcgGroup {
   return !!node && typeof node === "object" && !Array.isArray(node);
 }
 
-export type UploadedFile = {
-  /** Relative path from the upload root, e.g. "core/color.json". */
-  path: string;
-  /** Parsed JSON contents. */
-  json: unknown;
-};
-
-export function parseFiles(files: UploadedFile[]): ParseResult {
+export function parseFiles(files: RawUpload[]): ParseResult {
   const tokens: Token[] = [];
   const warnings: ParseResult["warnings"] = [];
 
@@ -173,12 +167,12 @@ export function parseFiles(files: UploadedFile[]): ParseResult {
  * `core/post/core/color/sandgrey/002` prefixed by the set key.
  *
  * Detected by the presence of `$metadata.tokenSetOrder` or `$themes` at the
- * root. Each set is returned as its own virtual UploadedFile so that
+ * root. Each set is returned as its own virtual RawUpload so that
  * parseFiles() produces token names without the set-key prefix.
  *
  * Plain W3C DTCG files (no `$themes`/`$metadata`) are returned unchanged.
  */
-export function expandTokensStudio(f: UploadedFile): UploadedFile[] {
+export function expandTokensStudio(f: RawUpload): RawUpload[] {
   const root = f.json as Record<string, unknown>;
   const isTokensStudio =
     (Array.isArray(root.$themes) && root.$themes.length > 0) ||

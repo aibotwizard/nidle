@@ -17,7 +17,7 @@
     return a;
   };
 
-  // src/shared/mapping/toFigma.ts
+  // src/shared/settings.ts
   var DEFAULT_SETTINGS = {
     refMode: "keepAlias",
     separator: "slash",

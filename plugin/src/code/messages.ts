@@ -13,7 +13,7 @@ export type PlanError = WriteError;
  * modules.
  */
 export type StoredSettings = Partial<
-  import("../shared/mapping/toFigma.js").MappingSettings
+  import("../shared/settings.js").MappingSettings
 >;
 
 export type ToCode =

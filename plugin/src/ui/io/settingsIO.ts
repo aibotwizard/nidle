@@ -4,7 +4,7 @@ import type { SandboxTransport } from "./transport.js";
 export type { StoredSettings };
 // The validator lives in shared/ so the sandbox applies the same
 // whitelist on its side of the boundary (req-0002 / FR-906).
-export { mergeWithDefaults } from "../../shared/mapping/toFigma.js";
+export { mergeWithDefaults } from "../../shared/settings.js";
 
 /**
  * Single-purpose port for persisting StoredSettings. The live adapter

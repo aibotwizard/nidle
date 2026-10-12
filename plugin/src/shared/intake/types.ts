@@ -1,5 +1,4 @@
 import type { ParseWarning, Token } from "../dtcg/types.js";
-import type { FileTokens } from "../mapping/toFigma.js";
 
 /**
  * One source file's raw, parsed-but-unprocessed contents. Used as the
@@ -12,6 +11,12 @@ export type RawUpload = {
   json: unknown;
 };
 
+/** One source file's parsed tokens — the planner's unit of input. */
+export type FileTokens = {
+  file: string;
+  tokens: Token[];
+};
+
 /**
  * What TokenIntake produces. `files` is what the planner wants;
  * `warnings` is every parse-stage warning for them (ADR-0022 decides
@@ -21,5 +26,3 @@ export type IntakeResult = {
   files: FileTokens[];
   warnings: ParseWarning[];
 };
-
-export type { FileTokens, Token };

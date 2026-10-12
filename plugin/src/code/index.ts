@@ -1,4 +1,5 @@
-import { mergeWithDefaults, type VariablePlan } from "../shared/mapping/toFigma.js";
+import type { VariablePlan } from "../shared/mapping/toFigma.js";
+import { mergeWithDefaults } from "../shared/settings.js";
 import { write } from "../shared/writer/variableWriter.js";
 import { createFigmaApiLive } from "./figmaApiLive.js";
 import type { StoredSettings, ToCode, ToUI } from "./messages.js";

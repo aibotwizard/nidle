@@ -1,10 +1,7 @@
 import type { ParseWarning, Token } from "../../shared/dtcg/types.js";
 import type { LogTone, PlanError, StoredSettings, ToUI } from "../../code/messages.js";
-import {
-  DEFAULT_SETTINGS,
-  type FileTokens,
-  type MappingSettings,
-} from "../../shared/mapping/toFigma.js";
+import { DEFAULT_SETTINGS, type MappingSettings } from "../../shared/settings.js";
+import type { FileTokens } from "../../shared/intake/types.js";
 // Pure validator only — no I/O crosses this import.
 import { mergeWithDefaults } from "../io/settingsIO.js";
 
