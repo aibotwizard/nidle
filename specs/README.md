@@ -12,6 +12,7 @@ here.
 | [specification.md](specification.md) | Exactly what the plugin does with a token file | AO |
 | [requirements/feature-requirements.md](requirements/feature-requirements.md) | Every requirement, numbered, with its status and its test | PO |
 | [architecture.md](architecture.md) | Module map, seams, invariants, current friction | AO |
+| [c4/](c4/c1-system-context.md) | The same system as a C4 model — context, containers, components, code — one file per level | AO |
 | [roadmap.md](roadmap.md) | What ships next and in what order | PO |
 | [plan.md](plan.md) | Milestone-by-milestone work breakdown | AO |
 | [decisions/](decisions/) | Why things are the way they are — 12 ADRs | AO / PO |
@@ -24,7 +25,8 @@ here.
 - *"Is feature X built, and what proves it?"* →
   [requirements/feature-requirements.md](requirements/feature-requirements.md)
 - *"Where does this new code belong?"* →
-  [architecture.md](architecture.md) §1 and §10
+  [architecture.md](architecture.md) §1 and §10, or the map in
+  [c4/c3-components.md](c4/c3-components.md)
 - *"Can we add feature Y?"* → [constitution.md](constitution.md) §1
   non-goals, then the PO
 - *"Why was this done this way?"* → [decisions/](decisions/)
