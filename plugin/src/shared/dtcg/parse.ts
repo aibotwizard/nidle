@@ -1,3 +1,4 @@
+import { isAliasValue, isNegatedAlias } from "./alias.js";
 import type {
   DtcgGroup,
   DtcgLeaf,
@@ -140,21 +141,6 @@ export type UploadedFile = {
   /** Parsed JSON contents. */
   json: unknown;
 };
-
-/** A DTCG alias value such as "{color.blue.500}". */
-export function isAliasValue(raw: unknown): raw is string {
-  return (
-    typeof raw === "string" &&
-    raw.length >= 3 &&
-    raw.startsWith("{") &&
-    raw.endsWith("}")
-  );
-}
-
-/** Extract the dot-separated path from an alias string `"{a.b.c}"` → `"a.b.c"`. */
-export function aliasPath(raw: string): string {
-  return raw.slice(1, -1).trim();
-}
 
 export function parseFiles(files: UploadedFile[]): ParseResult {
   const tokens: Token[] = [];
@@ -540,19 +526,6 @@ function flattenValueUnit(raw: unknown): unknown {
   return `${o.value}${o.unit}`;
 }
 
-/** `"-{sizes.8}"` — an alias with arithmetic wrapped around it. */
-export function isNegatedAlias(raw: unknown): boolean {
-  return typeof raw === "string" && /^-\s*\{.+\}$/.test(raw.trim());
-}
-
-/** `"-{sizes.8}"` → `"{sizes.8}"`; null when there is no negation. */
-export function negatedAliasOf(raw: unknown): string | null {
-  if (!isNegatedAlias(raw)) return null;
-  return (raw as string).trim().slice(1).trim();
-}
-
-export type Rgba = { r: number; g: number; b: number; a: number };
-
 /** 1rem = REM_BASE_PX. Figma variables only store px (ADR-0011). */
 export const REM_BASE_PX = 16;
 
@@ -602,74 +575,4 @@ export function fontWeightToNumber(raw: unknown): number | null {
   const s = raw.trim();
   if (/^-?\d*\.?\d+$/.test(s)) return parseFloat(s);
   return FONT_WEIGHT_KEYWORDS[s.toLowerCase()] ?? null;
-}
-
-/**
- * Parse a CSS color string into Figma's {r,g,b,a} 0–1 floats.
- * Accepts hex (#rgb, #rrggbb, #rrggbbaa) and CSS rgb()/rgba()
- * with comma or whitespace separators. Returns null on anything else.
- */
-export function parseColor(input: string): Rgba | null {
-  const s = input.trim();
-  if (s.startsWith("#")) return hexToRgba(s);
-  if (/^rgba?\s*\(/i.test(s)) return rgbFuncToRgba(s);
-  return null;
-}
-
-/** @deprecated use parseColor — kept for tests that exercise hex specifically. */
-export const hexToRgba = (hex: string): Rgba | null => {
-  let h = hex.trim();
-  if (h.startsWith("#")) h = h.slice(1);
-  if (h.length === 3) {
-    h = h
-      .split("")
-      .map((c) => c + c)
-      .join("");
-  }
-  if (h.length !== 6 && h.length !== 8) return null;
-  const r = parseInt(h.slice(0, 2), 16);
-  const g = parseInt(h.slice(2, 4), 16);
-  const b = parseInt(h.slice(4, 6), 16);
-  const a = h.length === 8 ? parseInt(h.slice(6, 8), 16) : 255;
-  if ([r, g, b, a].some((n) => Number.isNaN(n))) return null;
-  return { r: r / 255, g: g / 255, b: b / 255, a: a / 255 };
-};
-
-function rgbFuncToRgba(s: string): Rgba | null {
-  const open = s.indexOf("(");
-  const close = s.lastIndexOf(")");
-  if (open < 0 || close <= open) return null;
-  const parts = s
-    .slice(open + 1, close)
-    .split(/[,\s/]+/)
-    .map((p) => p.trim())
-    .filter((p) => p.length > 0);
-  if (parts.length !== 3 && parts.length !== 4) return null;
-  const ch = parts.slice(0, 3).map(parseChannel);
-  if (ch.some((n) => n === null)) return null;
-  const a = parts.length === 4 ? parseAlpha(parts[3]!) : 1;
-  if (a === null) return null;
-  return { r: ch[0]!, g: ch[1]!, b: ch[2]!, a };
-}
-
-function parseChannel(p: string): number | null {
-  if (p.endsWith("%")) {
-    const n = parseFloat(p.slice(0, -1));
-    return Number.isFinite(n) ? clamp01(n / 100) : null;
-  }
-  const n = parseFloat(p);
-  return Number.isFinite(n) ? clamp01(n / 255) : null;
-}
-
-function parseAlpha(p: string): number | null {
-  if (p.endsWith("%")) {
-    const n = parseFloat(p.slice(0, -1));
-    return Number.isFinite(n) ? clamp01(n / 100) : null;
-  }
-  const n = parseFloat(p);
-  return Number.isFinite(n) ? clamp01(n) : null;
-}
-
-function clamp01(n: number): number {
-  return n < 0 ? 0 : n > 1 ? 1 : n;
 }

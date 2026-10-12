@@ -1,4 +1,4 @@
-import { aliasPath, isAliasValue, negatedAliasOf } from "./parse.js";
+import { aliasName, isAliasValue, negatedAliasOf } from "./alias.js";
 import type { DtcgType, ParseWarning, Token } from "./types.js";
 
 export type ResolveMode = "keepAlias" | "resolve";
@@ -176,9 +176,4 @@ function chainTip(
     cursor = next;
   }
   return { tip: cursor };
-}
-
-/** "{color.blue.500}" → "color/blue/500" — DTCG aliases are dot-separated. */
-export function aliasName(raw: string): string {
-  return aliasPath(raw).split(".").join("/");
 }
