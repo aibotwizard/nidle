@@ -95,6 +95,7 @@ This is the only coupling point that matters; keep it that way.
 | `main.tsx` | Composition root: builds the io singletons, mounts `<App/>`. |
 | `App.tsx` | Wiring only: reducer, two effects, step switch. |
 | `state/machine.ts` | Wizard `Phase` union + settings + reducer; `Action ⊇ ToUI`. |
+| `state/diagnostics.ts` | Which warnings count, at what severity, and how Step 3, the console and the Step 4 stat show them (**ADR-0022**). |
 | `io/transport.ts` | `postMessage` multiplexer — sole owner of `window.message`. |
 | `io/settingsIO.ts` | Storage port, both adapters, `mergeWithDefaults` validation. |
 | `io/intake.ts` | Picker + drop producers; owns the upload path contract. |
@@ -362,6 +363,7 @@ misleads.
 | `variableWriter.spec.ts` | node | apply, through the in-memory `FigmaApi` |
 | `settingsIO.spec.ts` | node | validation + both storage adapters, incl. load timeout |
 | `ui/machine.spec.ts` | node | reducer lifecycle edges, log truncation |
+| `ui/diagnostics.spec.ts` | node | warning scope, severity, notice grouping, console lines |
 | `ui/intake.spec.ts` | node | the path contract: drop ≡ pick (FR-106) |
 | `ui/appFlow.spec.tsx` | jsdom | the real wizard end to end, error path, settings→DOM |
 

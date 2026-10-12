@@ -94,6 +94,7 @@ plugin/
       main.tsx          # entry: builds io singletons, mounts <App/>
       App.tsx           # wiring only: reducer + effects + step switch
       state/            # machine.ts — Phase union + settings + reducer (Action ⊇ ToUI)
+                        # diagnostics.ts — warning scope/severity/grouping (ADR-0022)
       io/               # transport (postMessage multiplexer), settingsIO
                         # (storage port + adapters + validation), intake
                         # (picker + drop producers; owns the path contract)
@@ -121,6 +122,7 @@ plugin/
     ui/
       appFlow.spec.tsx  # real wizard end-to-end (jsdom), error path, settings→DOM
       machine.spec.ts   # reducer lifecycle edges, log truncation
+      diagnostics.spec.ts # warning scope, severity, notice grouping
       intake.spec.ts    # path contract: drop ≡ pick (FR-106)
 specs/                  # constitution, plan, ADRs, agents, assets, requirements
 ```

@@ -41,11 +41,8 @@ export type State = {
   phase: Phase;
   files: FileMeta[];
   log: LogLine[];
-  // Parse-time warnings from the last upload; seeded into the log when an
-  // import starts so they stay visible on the Step 4 console.
-  intakeWarnings: LogLine[];
-  // The same parse-stage warnings, structurally — Step 3 needs the
-  // `level` to tell a dropped token from a conversion notice.
+  // Parse-stage warnings from the last upload, unreadable files included;
+  // `diagnose` decides which of them count and how they render.
   parseWarnings: ParseWarning[];
   settings: MappingSettings;
   settingsOpen: boolean;
@@ -55,7 +52,6 @@ export const initialState: State = {
   phase: { kind: "source" },
   files: [],
   log: [],
-  intakeWarnings: [],
   parseWarnings: [],
   settings: { ...DEFAULT_SETTINGS },
   settingsOpen: false,
@@ -67,15 +63,10 @@ export const initialState: State = {
  */
 export type Action =
   | ToUI
-  | {
-      type: "filesLoaded";
-      files: FileMeta[];
-      warningLines: LogLine[];
-      parseWarnings: ParseWarning[];
-    }
+  | { type: "filesLoaded"; files: FileMeta[]; parseWarnings: ParseWarning[] }
   | { type: "fileToggled"; path: string }
   | { type: "navigated"; to: 1 | 2 | 3 }
-  | { type: "importStarted"; count: number }
+  | { type: "importStarted"; count: number; diagnostics: LogLine[] }
   | { type: "settingsChanged"; patch: StoredSettings }
   | { type: "sheetToggled"; open: boolean }
   | { type: "reset" };
@@ -105,7 +96,6 @@ export function reducer(state: State, action: Action): State {
       return {
         ...state,
         files: action.files,
-        intakeWarnings: action.warningLines,
         parseWarnings: action.parseWarnings,
       };
     case "fileToggled":
@@ -122,7 +112,7 @@ export function reducer(state: State, action: Action): State {
         ...state,
         phase: { kind: "importing", progress: 0 },
         log: [
-          ...state.intakeWarnings,
+          ...action.diagnostics,
           { text: `Sending ${action.count} variables to Figma…`, tone: "dim" },
         ],
       };

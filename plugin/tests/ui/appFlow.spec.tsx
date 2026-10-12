@@ -44,6 +44,20 @@ function fixtureFiles(name: string): File[] {
   });
 }
 
+/** In-memory uploads → browser File objects, picked from a `tokens/` folder. */
+function pickedFiles(uploads: { path: string; json: unknown }[]): File[] {
+  return uploads.map((u) => {
+    const f = new File([JSON.stringify(u.json)], u.path.split("/").pop()!, {
+      type: "application/json",
+    });
+    Object.defineProperty(f, "webkitRelativePath", {
+      value: `tokens/${u.path}`,
+      configurable: true,
+    });
+    return f;
+  });
+}
+
 function renderApp() {
   const fake = createFakeTransport();
   const storage = createInMemoryStorage();
@@ -137,12 +151,12 @@ describe("App — upload → preview → import flow", () => {
     fireEvent.click(screen.getByRole("button", { name: "Import 6 variables" }));
 
     // The parse failure is visible in the step 4 console…
-    expect(screen.getByText(/core\/broken\.json — invalid JSON/)).toBeTruthy();
+    expect(screen.getByText(/core\/broken\.json · \(root\) — invalid JSON/)).toBeTruthy();
 
     act(() => fake.emit({ type: "done", created: 6, updated: 0, errors: [] }));
     expect(screen.getByText("Import complete")).toBeTruthy();
     // …survives `done`, and the warnings stat counts it in red.
-    expect(screen.getByText(/core\/broken\.json — invalid JSON/)).toBeTruthy();
+    expect(screen.getByText(/core\/broken\.json · \(root\) — invalid JSON/)).toBeTruthy();
     const warnBig = document.querySelectorAll<HTMLElement>(".done-stats .cell .big")[3]!;
     expect(warnBig.textContent).toBe("1");
     expect(warnBig.style.color).toBe("rgb(255, 139, 139)");
@@ -202,6 +216,79 @@ describe("App — upload → preview → import flow", () => {
       '3× tokens missing in mode "Dark" — filled from mode "Light"',
       "Per-token detail in the import console.",
     ]);
+  });
+
+  it("logs plan-stage notices on the step 4 console (ADR-0020 §4)", async () => {
+    renderApp();
+    const input = document.querySelector<HTMLInputElement>('input[type="file"]')!;
+    fireEvent.change(input, {
+      target: {
+        files: pickedFiles([
+          {
+            path: "semantic/light.json",
+            json: {
+              bg: { $type: "color", $value: "#FFFFFF" },
+              fg: { $type: "color", $value: "#000000" },
+              only: { $type: "color", $value: "#EEEEEE" },
+            },
+          },
+          {
+            path: "semantic/dark.json",
+            json: {
+              bg: { $type: "color", $value: "#000000" },
+              fg: { $type: "color", $value: "#FFFFFF" },
+            },
+          },
+        ]),
+      },
+    });
+    await screen.findByText("2 files detected");
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    fireEvent.click(screen.getByRole("button", { name: "Preview import" }));
+    // Step 3 promises the per-token detail is in the console…
+    expect(screen.getByText("Per-token detail in the import console.")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Import 3 variables" }));
+    // …so the plan-stage fill must be logged there.
+    expect(screen.getByText(/token "only" missing in mode "Dark"/)).toBeTruthy();
+  });
+
+  it("shows the Tokens Studio expansion notice on step 3", async () => {
+    renderApp();
+    const input = document.querySelector<HTMLInputElement>('input[type="file"]')!;
+    fireEvent.change(input, {
+      target: {
+        files: pickedFiles([
+          {
+            path: "tokens.json",
+            json: {
+              $metadata: { tokenSetOrder: ["core"] },
+              core: { c: { $type: "color", $value: "#FFFFFF" } },
+            },
+          },
+        ]),
+      },
+    });
+    await screen.findByText(/detected/);
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    fireEvent.click(screen.getByRole("button", { name: "Preview import" }));
+    const notes = document.querySelector<HTMLElement>(".warnings.notes")!;
+    expect(notes.textContent).toContain("1× Tokens Studio combined exports expanded into token sets");
+  });
+
+  it("shows unreadable files on step 3 as parse warnings", async () => {
+    renderApp();
+    const broken = new File(["{ nope"], "broken.json", { type: "application/json" });
+    Object.defineProperty(broken, "webkitRelativePath", {
+      value: "tokens/core/broken.json",
+      configurable: true,
+    });
+    const input = document.querySelector<HTMLInputElement>('input[type="file"]')!;
+    fireEvent.change(input, { target: { files: [...fixtureFiles("m1-primitives"), broken] } });
+    await screen.findByText("2 files detected");
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    fireEvent.click(screen.getByRole("button", { name: "Preview import" }));
+    expect(screen.getByText("1 parse warning")).toBeTruthy();
+    expect(screen.getByText(/core\/broken\.json · \(root\) — invalid JSON/)).toBeTruthy();
   });
 
   it("surfaces a sandbox error on step 4", async () => {
