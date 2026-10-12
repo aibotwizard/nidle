@@ -2,6 +2,7 @@ import type { ParseWarning, Token } from "../../shared/dtcg/types.js";
 import type { LogTone, PlanError, StoredSettings, ToUI } from "../../code/messages.js";
 import {
   DEFAULT_SETTINGS,
+  type FileTokens,
   type MappingSettings,
 } from "../../shared/mapping/toFigma.js";
 // Pure validator only — no I/O crosses this import.
@@ -37,6 +38,9 @@ export type Phase =
   | { kind: "importing"; progress: number }
   | { kind: "done"; result?: ImportResult };
 
+/** The two phases Step 4 renders. */
+export type ImportPhase = Extract<Phase, { kind: "importing" | "done" }>;
+
 export type State = {
   phase: Phase;
   files: FileMeta[];
@@ -63,7 +67,7 @@ export const initialState: State = {
  */
 export type Action =
   | ToUI
-  | { type: "filesLoaded"; files: FileMeta[]; parseWarnings: ParseWarning[] }
+  | { type: "filesLoaded"; files: FileTokens[]; parseWarnings: ParseWarning[] }
   | { type: "fileToggled"; path: string }
   | { type: "navigated"; to: 1 | 2 | 3 }
   | { type: "importStarted"; count: number; consoleLines: LogLine[] }
@@ -90,12 +94,23 @@ const NAV_PHASE: Record<1 | 2 | 3, Phase> = {
   3: { kind: "preview" },
 };
 
+/** Step 2 lists files by folder; a flat upload reads as "(root)". */
+function toFileMeta(fileTokens: FileTokens[]): FileMeta[] {
+  const files = fileTokens.map((ft) => {
+    const parts = ft.file.split("/");
+    const name = parts[parts.length - 1]!;
+    const folder = parts.length > 1 ? parts.slice(0, -1).join("/") : "(root)";
+    return { path: ft.file, name, folder, tokens: ft.tokens, selected: true };
+  });
+  return files.sort((a, b) => (a.folder + a.name).localeCompare(b.folder + b.name));
+}
+
 export function reducer(state: State, action: Action): State {
   switch (action.type) {
     case "filesLoaded":
       return {
         ...state,
-        files: action.files,
+        files: toFileMeta(action.files),
         parseWarnings: action.parseWarnings,
       };
     case "fileToggled":
