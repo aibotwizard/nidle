@@ -1,5 +1,5 @@
 import { Fragment } from "react";
-import type { ParseWarning } from "../../shared/dtcg/types.js";
+import { warningLine, type Diagnostics } from "../state/diagnostics.js";
 import type { CollectionName, VariableOp, VariablePlan } from "../../shared/mapping/toFigma.js";
 import { CollectionIcon } from "./shared/icons.js";
 import { StatCards } from "./shared/StatCards.js";
@@ -11,12 +11,11 @@ const WARNING_PREVIEW = 8;
 export function StepPreview({
   plan,
   selectedCount,
-  warnings,
+  diagnostics,
 }: {
   plan: VariablePlan;
   selectedCount: number;
-  /** Parse-stage plus plan-stage warnings for the selected files. */
-  warnings: ParseWarning[];
+  diagnostics: Diagnostics;
 }) {
   const totalModes = plan.collections.reduce((a, c) => a + c.modes.length, 0);
 
@@ -70,8 +69,8 @@ export function StepPreview({
           </Fragment>
         );
       })}
-      <WarningPanel list={warnings.filter((w) => w.level !== "notice")} />
-      <NoticePanel list={warnings.filter((w) => w.level === "notice")} />
+      <WarningPanel list={diagnostics.dropped} />
+      <NoticePanel kinds={diagnostics.notices} />
     </div>
   );
 }
@@ -80,7 +79,7 @@ export function StepPreview({
  * Dropped tokens, per token: these are what the import will lose, so the
  * name of every one of them matters.
  */
-function WarningPanel({ list }: { list: ParseWarning[] }) {
+function WarningPanel({ list }: { list: Diagnostics["dropped"] }) {
   if (list.length === 0) return null;
   return (
     <div className="warnings">
@@ -89,7 +88,7 @@ function WarningPanel({ list }: { list: ParseWarning[] }) {
       </div>
       {list.slice(0, WARNING_PREVIEW).map((pw, i) => (
         <div key={i} className="warning-ln">
-          {pw.file} · {pw.path} — {pw.reason}
+          {warningLine(pw)}
         </div>
       ))}
       {list.length > WARNING_PREVIEW ? (
@@ -106,25 +105,19 @@ function WarningPanel({ list }: { list: ParseWarning[] }) {
  * console, which keeps the constitution §3.2 promise that nothing is
  * silent.
  */
-function NoticePanel({ list }: { list: ParseWarning[] }) {
-  if (list.length === 0) return null;
-  const byKind = new Map<string, number>();
-  for (const w of list) {
-    const key = w.summary ?? w.reason;
-    byKind.set(key, (byKind.get(key) ?? 0) + 1);
-  }
+function NoticePanel({ kinds }: { kinds: Diagnostics["notices"] }) {
+  if (kinds.length === 0) return null;
+  const total = kinds.reduce((a, k) => a + k.count, 0);
   return (
     <div className="warnings notes">
       <div className="warnings-head">
-        {list.length} notice{list.length === 1 ? "" : "s"}
+        {total} notice{total === 1 ? "" : "s"}
       </div>
-      {[...byKind]
-        .sort((a, b) => b[1] - a[1])
-        .map(([kind, n]) => (
-          <div key={kind} className="warning-ln">
-            {n}× {kind}
-          </div>
-        ))}
+      {kinds.map(({ kind, count }) => (
+        <div key={kind} className="warning-ln">
+          {count}× {kind}
+        </div>
+      ))}
       <div className="warning-ln">Per-token detail in the import console.</div>
     </div>
   );

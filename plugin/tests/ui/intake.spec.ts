@@ -86,9 +86,10 @@ describe("fromPicker", () => {
       pickerFile("tokens/broken.json", "{oops"),
     ]);
     expect(paths(r)).toEqual(["core/color.json"]);
-    expect(r.parseFailures).toHaveLength(1);
-    expect(r.parseFailures[0]!.path).toBe("broken.json");
-    expect(r.parseFailures[0]!.reason).toContain("invalid JSON");
+    expect(r.warnings).toHaveLength(1);
+    expect(r.warnings[0]!.file).toBe("broken.json");
+    expect(r.warnings[0]!.path).toBe("(root)");
+    expect(r.warnings[0]!.reason).toContain("invalid JSON");
   });
 });
 

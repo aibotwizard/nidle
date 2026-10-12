@@ -13,14 +13,13 @@ export type RawUpload = {
 };
 
 /**
- * What TokenIntake produces. `files` is what the planner wants; the
- * other two fields surface problems the UI can show on Step 1 (parse
- * warnings) or Step 2 (failures).
+ * What TokenIntake produces. `files` is what the planner wants;
+ * `warnings` is every parse-stage warning for them (ADR-0022 decides
+ * how they are shown).
  */
 export type IntakeResult = {
   files: FileTokens[];
   warnings: ParseWarning[];
-  parseFailures: { path: string; reason: string }[];
 };
 
 export type { FileTokens, Token };

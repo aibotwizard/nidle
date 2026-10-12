@@ -8,7 +8,8 @@ const err = (i: number): PlanError => ({
   source: { file: "core/color.json", path: `blue.${i}` },
 });
 
-const importing = () => reducer(initialState, { type: "importStarted", count: 7 });
+const importing = () =>
+  reducer(initialState, { type: "importStarted", count: 7, consoleLines: [] });
 
 describe("machine — done", () => {
   it("logs a success summary with tone ok when there are no errors", () => {
@@ -39,35 +40,25 @@ describe("machine — done", () => {
 });
 
 describe("machine — import lifecycle", () => {
-  it("importStarted seeds the log with intake warnings ahead of the send line", () => {
-    const warning = { text: "core/broken.json — invalid JSON", tone: "err" as const };
+  it("importStarted seeds the log with the console lines ahead of the send line", () => {
+    const warning = { text: "core/broken.json · (root) — invalid JSON", tone: "err" as const };
     const s = reducer(
-      { ...initialState, intakeWarnings: [warning], log: [{ text: "old", tone: "dim" }] },
-      { type: "importStarted", count: 7 },
+      { ...initialState, log: [{ text: "old", tone: "dim" }] },
+      { type: "importStarted", count: 7, consoleLines: [warning] },
     );
     expect(s.phase).toEqual({ kind: "importing", progress: 0 });
     expect(stepOf(s.phase)).toBe(4);
     expect(s.log).toEqual([warning, { text: "Sending 7 variables to Figma…", tone: "dim" }]);
   });
 
-  it("filesLoaded replaces intake warnings instead of accumulating them", () => {
-    const w1 = { text: "a.json — invalid JSON", tone: "err" as const };
-    const w2 = { text: "b.json — invalid JSON", tone: "err" as const };
-    const first = reducer(initialState, {
-      type: "filesLoaded",
-      files: [],
-      warningLines: [w1],
-      parseWarnings: [],
-    });
-    expect(first.intakeWarnings).toEqual([w1]);
+  it("filesLoaded replaces parse warnings instead of accumulating them", () => {
+    const w1 = { file: "a.json", path: "(root)", reason: "invalid JSON" };
+    const w2 = { file: "b.json", path: "(root)", reason: "invalid JSON" };
+    const first = reducer(initialState, { type: "filesLoaded", files: [], parseWarnings: [w1] });
+    expect(first.parseWarnings).toEqual([w1]);
     expect(first.log).toEqual([]);
-    const second = reducer(first, {
-      type: "filesLoaded",
-      files: [],
-      warningLines: [w2],
-      parseWarnings: [],
-    });
-    expect(second.intakeWarnings).toEqual([w2]);
+    const second = reducer(first, { type: "filesLoaded", files: [], parseWarnings: [w2] });
+    expect(second.parseWarnings).toEqual([w2]);
   });
 
   it("progress updates only while importing", () => {
