@@ -1,4 +1,4 @@
-import type { Token } from "../../shared/dtcg/types.js";
+import type { ParseWarning, Token } from "../../shared/dtcg/types.js";
 import type { LogTone, PlanError, StoredSettings, ToUI } from "../../code/messages.js";
 import {
   DEFAULT_SETTINGS,
@@ -44,6 +44,9 @@ export type State = {
   // Parse-time warnings from the last upload; seeded into the log when an
   // import starts so they stay visible on the Step 4 console.
   intakeWarnings: LogLine[];
+  // The same parse-stage warnings, structurally — Step 3 needs the
+  // `level` to tell a dropped token from a conversion notice.
+  parseWarnings: ParseWarning[];
   settings: MappingSettings;
   settingsOpen: boolean;
 };
@@ -53,6 +56,7 @@ export const initialState: State = {
   files: [],
   log: [],
   intakeWarnings: [],
+  parseWarnings: [],
   settings: { ...DEFAULT_SETTINGS },
   settingsOpen: false,
 };
@@ -63,7 +67,12 @@ export const initialState: State = {
  */
 export type Action =
   | ToUI
-  | { type: "filesLoaded"; files: FileMeta[]; warningLines: LogLine[] }
+  | {
+      type: "filesLoaded";
+      files: FileMeta[];
+      warningLines: LogLine[];
+      parseWarnings: ParseWarning[];
+    }
   | { type: "fileToggled"; path: string }
   | { type: "navigated"; to: 1 | 2 | 3 }
   | { type: "importStarted"; count: number }
@@ -93,7 +102,12 @@ const NAV_PHASE: Record<1 | 2 | 3, Phase> = {
 export function reducer(state: State, action: Action): State {
   switch (action.type) {
     case "filesLoaded":
-      return { ...state, files: action.files, intakeWarnings: action.warningLines };
+      return {
+        ...state,
+        files: action.files,
+        intakeWarnings: action.warningLines,
+        parseWarnings: action.parseWarnings,
+      };
     case "fileToggled":
       return {
         ...state,

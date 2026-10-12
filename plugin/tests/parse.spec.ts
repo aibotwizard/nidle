@@ -5,6 +5,8 @@ import {
   hexToRgba,
   parseColor,
   dimensionToPx,
+  durationToMs,
+  fontWeightToNumber,
 } from "../src/shared/dtcg/parse.js";
 import { DEFAULT_SETTINGS, planForFiles } from "../src/shared/mapping/toFigma.js";
 import { fromUploads } from "../src/shared/intake/tokenIntake.js";
@@ -454,5 +456,207 @@ describe("DTCG untyped alias tokens (spec §5.2.2 rule 1)", () => {
         file: "component/btn.json",
       },
     ]);
+  });
+});
+
+describe("DTCG 2025.10 object-form dimensions", () => {
+  const leaf = (value: unknown) =>
+    parseFiles([
+      { path: "core/rest.json", json: { fs: { $type: "dimension", $value: value } } },
+    ]);
+
+  it("dimensionToPx accepts { value, unit }", () => {
+    expect(dimensionToPx({ value: 0.75, unit: "rem" })).toBe(12);
+    expect(dimensionToPx({ value: 2, unit: "px" })).toBe(2);
+    expect(dimensionToPx({ value: 150, unit: "%" })).toBe(1.5);
+  });
+
+  it("parses the object form without a warning", () => {
+    const r = leaf({ value: 0.75, unit: "rem" });
+    expect(r.warnings).toEqual([]);
+    expect(r.tokens[0]!.value).toBe(12);
+  });
+
+  it("rejects an object without a numeric value or a string unit", () => {
+    expect(dimensionToPx({ value: "0.75", unit: "rem" })).toBeNull();
+    expect(leaf({ value: 0.75 }).tokens).toEqual([]);
+    expect(leaf({ value: 0.75 }).warnings[0]!.reason).toMatch(/dimension value must be/);
+  });
+
+  it("keeps a negated alias verbatim for the resolver (D-14)", () => {
+    // Only the resolver can look up the value being negated, so the parser
+    // passes the expression through untouched, exactly like a plain alias.
+    const r = leaf("-{sizes.8}");
+    expect(r.warnings).toEqual([]);
+    expect(r.tokens[0]).toMatchObject({ type: "dimension", value: "-{sizes.8}" });
+  });
+});
+
+describe("DTCG composite types split into their members (ADR-0021)", () => {
+  const leaf = (type: string, value: unknown) =>
+    parseFiles([{ path: "core/t.json", json: { t: { $type: type, $value: value } } }]);
+
+  it("splits a border into color, width, and style", () => {
+    const r = leaf("border", {
+      color: "{color.border.error.default}",
+      width: "{sizes.2}",
+      style: "solid",
+    });
+    expect(r.tokens).toEqual([
+      {
+        name: "t/color",
+        type: "color",
+        value: "{color.border.error.default}",
+        file: "core/t.json",
+      },
+      { name: "t/width", type: "dimension", value: "{sizes.2}", file: "core/t.json" },
+      { name: "t/style", type: "text", value: "solid", file: "core/t.json" },
+    ]);
+    // The split is a notice, not a drop: three variables now exist.
+    expect(r.warnings).toHaveLength(1);
+    expect(r.warnings[0]).toMatchObject({ level: "notice", path: "t" });
+    expect(r.warnings[0]!.reason).toContain("border split into 3 variables");
+  });
+
+  it("splits a transition, kebab-casing timingFunction", () => {
+    const r = leaf("transition", {
+      duration: { value: 175, unit: "ms" },
+      delay: { value: 100, unit: "ms" },
+      timingFunction: [0.25, 0.1, 0.25, 1],
+    });
+    expect(
+      Object.fromEntries(r.tokens.map((t) => [t.name, { type: t.type, value: t.value }])),
+    ).toEqual({
+      "t/duration": { type: "number", value: 175 },
+      "t/delay": { type: "number", value: 100 },
+      "t/timing-function": { type: "text", value: "cubic-bezier(0.25, 0.1, 0.25, 1)" },
+    });
+  });
+
+  it("reports a member it cannot create and keeps the rest", () => {
+    const r = leaf("border", { color: "#FF0000", style: "solid" });
+    expect(r.tokens.map((t) => t.name)).toEqual(["t/color", "t/style"]);
+    expect(r.warnings.some((w) => /border has no "width"/.test(w.reason))).toBe(true);
+  });
+
+  it("refuses an alias to a whole composite — only members can be aliased", () => {
+    const r = leaf("border", "{border.default}");
+    expect(r.tokens).toEqual([]);
+    expect(r.warnings[0]!.reason).toContain("a composite cannot be aliased");
+    expect(r.warnings[0]!.level).toBeUndefined();
+  });
+
+  it("emits a cubicBezier as one CSS-usable STRING", () => {
+    const r = leaf("cubicBezier", [0.25, 0.1, 0.25, 1]);
+    expect(r.warnings).toEqual([]);
+    expect(r.tokens[0]).toMatchObject({
+      type: "text",
+      value: "cubic-bezier(0.25, 0.1, 0.25, 1)",
+    });
+  });
+
+  it("warns on a cubicBezier that is not four numbers", () => {
+    const r = leaf("cubicBezier", [0.25, 0.1]);
+    expect(r.tokens).toEqual([]);
+    expect(r.warnings[0]!.reason).toContain("four finite numbers");
+  });
+});
+
+describe("DTCG scalar types folded onto number (ADR-0019)", () => {
+  const leaf = (type: string, value: unknown) =>
+    parseFiles([{ path: "core/rest.json", json: { t: { $type: type, $value: value } } }]);
+
+  it("maps numeric and keyword font weights to FLOAT-ready numbers", () => {
+    expect(fontWeightToNumber("300")).toBe(300);
+    expect(fontWeightToNumber(700)).toBe(700);
+    expect(fontWeightToNumber("Bold")).toBe(700);
+    expect(fontWeightToNumber("extra-light")).toBe(200);
+    expect(fontWeightToNumber("chunky")).toBeNull();
+    const r = leaf("fontWeight", "300");
+    expect(r.warnings).toEqual([]);
+    expect(r.tokens[0]).toMatchObject({ type: "number", value: 300 });
+  });
+
+  it("warns on a font weight that is neither numeric nor a keyword", () => {
+    const r = leaf("fontWeight", "chunky");
+    expect(r.tokens).toEqual([]);
+    expect(r.warnings[0]!.reason).toMatch(/font weight must be/);
+  });
+
+  it("stores durations in milliseconds, string or object form", () => {
+    expect(durationToMs("175ms")).toBe(175);
+    expect(durationToMs("0.2s")).toBe(200);
+    expect(durationToMs({ value: 175, unit: "ms" })).toBe(175);
+    expect(durationToMs("175 frames")).toBeNull();
+    const r = leaf("duration", { value: 175, unit: "ms" });
+    expect(r.warnings).toEqual([]);
+    expect(r.tokens[0]).toMatchObject({ type: "number", value: 175 });
+  });
+
+  it("warns on a duration outside the grammar", () => {
+    const r = leaf("duration", "quick");
+    expect(r.tokens).toEqual([]);
+    expect(r.warnings[0]!.reason).toMatch(/duration value must be/);
+  });
+
+  it("keeps aliases on both folded types", () => {
+    expect(leaf("fontWeight", "{font.font-weight.light}").tokens[0]).toMatchObject({
+      type: "number",
+      value: "{font.font-weight.light}",
+    });
+    expect(leaf("duration", "{duration-default}").tokens[0]!.value).toBe(
+      "{duration-default}",
+    );
+  });
+
+  it("reads a percent on a number as a fraction, like a dimension (D-11)", () => {
+    const r = leaf("number", "0.12%");
+    expect(r.tokens[0]!.value).toBeCloseTo(0.0012);
+    expect(r.warnings[0]!.reason).toContain("percent treated as a fraction");
+  });
+});
+
+describe("DTCG scalar types folded onto text (ADR-0019)", () => {
+  const leaf = (type: string, value: unknown) =>
+    parseFiles([{ path: "core/rest.json", json: { t: { $type: type, $value: value } } }]);
+
+  it("maps fontFamily, fontStyle, and strokeStyle to STRING-ready text", () => {
+    for (const [type, value] of [
+      ["fontFamily", "PostFinance Grotesk"],
+      ["fontStyle", "italic"],
+      ["strokeStyle", "solid"],
+    ] as const) {
+      const r = leaf(type, value);
+      expect(r.warnings, type).toEqual([]);
+      expect(r.tokens[0], type).toMatchObject({ type: "text", value });
+    }
+  });
+
+  it("flattens a font stack to its first family", () => {
+    const single = leaf("fontFamily", ["PostFinance Grotesk"]);
+    expect(single.warnings).toEqual([]);
+    expect(single.tokens[0]!.value).toBe("PostFinance Grotesk");
+
+    const stack = leaf("fontFamily", ["Grotesk", "Helvetica", "sans-serif"]);
+    expect(stack.tokens[0]!.value).toBe("Grotesk");
+    expect(stack.warnings[0]!.reason).toContain("font stack flattened");
+  });
+
+  it("preserves an alias nested inside a font stack", () => {
+    const r = leaf("fontFamily", ["{font.font-family.swiss-post}"]);
+    expect(r.warnings).toEqual([]);
+    expect(r.tokens[0]!.value).toBe("{font.font-family.swiss-post}");
+  });
+});
+
+describe("Tokens Studio metadata sidecars", () => {
+  it("skips $metadata.json / $themes.json without warning", () => {
+    const { tokens, warnings } = parseFiles([
+      { path: "$metadata.json", json: { tokenSetOrder: ["core"] } },
+      { path: "$themes.json", json: [{ id: "a", name: "Light" }] },
+      { path: "core/c.json", json: { c: { $type: "color", $value: "#fff" } } },
+    ]);
+    expect(warnings).toEqual([]);
+    expect(tokens.map((t) => t.name)).toEqual(["c"]);
   });
 });

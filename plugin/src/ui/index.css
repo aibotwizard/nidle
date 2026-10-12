@@ -349,6 +349,12 @@ input:focus { outline: none; border-color: #0d99ff !important; }
   font-family: 'JetBrains Mono', ui-monospace, monospace;
   font-size: 10.5px; color: #c4c4c4; line-height: 1.5;
 }
+/* Notices: nothing was lost, so the panel is muted, not red. */
+.warnings.notes {
+  background: rgba(255,255,255,0.06);
+  border-color: rgba(255,255,255,0.08);
+}
+.warnings.notes .warnings-head { color: #999; }
 
 /* ===== Settings sheet ===== */
 .sheet-overlay {

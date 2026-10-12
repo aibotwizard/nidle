@@ -53,10 +53,20 @@ describe("machine — import lifecycle", () => {
   it("filesLoaded replaces intake warnings instead of accumulating them", () => {
     const w1 = { text: "a.json — invalid JSON", tone: "err" as const };
     const w2 = { text: "b.json — invalid JSON", tone: "err" as const };
-    const first = reducer(initialState, { type: "filesLoaded", files: [], warningLines: [w1] });
+    const first = reducer(initialState, {
+      type: "filesLoaded",
+      files: [],
+      warningLines: [w1],
+      parseWarnings: [],
+    });
     expect(first.intakeWarnings).toEqual([w1]);
     expect(first.log).toEqual([]);
-    const second = reducer(first, { type: "filesLoaded", files: [], warningLines: [w2] });
+    const second = reducer(first, {
+      type: "filesLoaded",
+      files: [],
+      warningLines: [w2],
+      parseWarnings: [],
+    });
     expect(second.intakeWarnings).toEqual([w2]);
   });
 

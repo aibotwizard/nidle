@@ -223,22 +223,29 @@ early, because it changes what "done" means.
 
 ---
 
-## 6. M7 — Composite token types · **proposed**
+## 6. M7 — Composite token types · **partly implemented 2026-08-25**
 
-The largest remaining gap against DTCG · 2025.10. `shadow`,
-`typography`, `gradient`, `border`, and friends currently skip with a
-warning (FR-205, FR-213), which is honest but incomplete.
+Was the largest remaining gap against DTCG · 2025.10. Decided by the PO
+on 2026-08-25 in favour of **flattening to one variable per member**
+(ADR-0021), after the evidence the prerequisite asked for: `assets/base`
+contains 2 composite leaves (`border`, `transition`) and 1 `cubicBezier`,
+and skipping them was the last thing keeping that set from importing
+whole.
 
-Three options, unresolved — a PO decision, not an AO one:
+| Option | Outcome |
+|--------|---------|
+| Keep skipping with a warning | Rejected 2026-08-25 — the gap was the last error-level warning on the real set. |
+| Flatten to several primitive variables | **Chosen** for `border` and `transition`: one variable per member, named after the member key. Composite intent is lost, and round-trip stays impossible — accepted, since this plugin is a one-way bridge (constitution §1 non-goals). |
+| Defer to a follow-up requirement | Moot. |
 
-| Option | Consequence |
-|--------|-------------|
-| Keep skipping with a warning | Status quo. Zero cost, permanent gap. |
-| Flatten to several primitive variables | `shadow` → offset-x, offset-y, blur, spread, colour. Importable, but the composite intent is lost and round-trip is impossible. |
-| Defer to a follow-up requirement | Honest if composites are not what users are asking for. |
+`cubicBezier` took a third path: one STRING variable holding
+`cubic-bezier(…)`, keeping the 1:1 name rather than inventing four.
 
-**Prerequisite:** evidence. Count composite tokens in the real token
-sets users bring before choosing. Do not build this on speculation.
+**Still open:** `shadow`, `typography`, and `gradient` have no member
+mapping yet — none appears in the shipped sets, and `assets/tokens.json`
+has 67 (`boxShadow` 41, `typography` 26). Extend `COMPOSITE_PARTS` in
+`plugin/src/shared/dtcg/parse.ts` when a set that needs them lands; the
+mechanism is built, only the tables are missing.
 
 ---
 

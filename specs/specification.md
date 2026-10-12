@@ -100,6 +100,10 @@ name.
 If a file's root is not a JSON object, the file is skipped with the
 warning `file root is not a JSON object`.
 
+Files whose name starts with `$` — the Tokens Studio `$metadata.json`
+and `$themes.json` sidecars — are skipped silently. They carry set order
+and theme wiring, never tokens (ADR-0019).
+
 ### 2.4 Tokens Studio combined exports
 
 A file is treated as a **Tokens Studio combined export** when its root
@@ -122,17 +126,40 @@ Plain DTCG files are returned unchanged by this step.
 
 ### 3.1 Supported types
 
-| `$type`     | Figma type | Notes |
-|-------------|-----------|-------|
-| `color`     | `COLOR`   | §3.2 |
-| `dimension` | `FLOAT`   | coerced to px, ADR-0011 |
-| `number`    | `FLOAT`   | unitless |
+Four internal types reach Figma; every supported `$type` folds onto one
+of them.
 
-Any other `$type` — `shadow`, `typography`, `fontFamily`,
-`duration`, `cubicBezier`, `strokeStyle`, `border`, `transition`,
-`gradient` — produces the warning
-`unsupported $type "<x>" (MVP supports color, dimension, number)` and
-the token is **skipped, never silently dropped**
+| `$type`       | Internal | Figma type | Notes |
+|---------------|----------|-----------|-------|
+| `color`       | `color`     | `COLOR`  | §3.2 |
+| `dimension`   | `dimension` | `FLOAT`  | coerced to px, ADR-0011 |
+| `number`      | `number`    | `FLOAT`  | unitless |
+| `fontWeight`  | `number`    | `FLOAT`  | keywords resolve via the spec table, ADR-0019 |
+| `duration`    | `number`    | `FLOAT`  | stored in milliseconds, ADR-0019 |
+| `fontFamily`  | `text`      | `STRING` | font stack → first family, ADR-0019 |
+| `strokeStyle` | `text`      | `STRING` | string form only, ADR-0019 |
+| `fontStyle`   | `text`      | `STRING` | not a DTCG type; seen in real exports, ADR-0019 |
+| `cubicBezier` | `text`      | `STRING` | `cubic-bezier(a, b, c, d)`, ADR-0021 |
+
+Tokens Studio `$type` names fold in the same way — numeric names onto
+`dimension` (ADR-0015), string names onto `text` (ADR-0016).
+
+Two composites are **split into one variable per member** (ADR-0021),
+because a Figma variable holds a single scalar:
+
+| `$type`      | Members → tokens |
+|--------------|------------------|
+| `border`     | `…/color` (color), `…/width` (dimension), `…/style` (STRING) |
+| `transition` | `…/duration` (ms), `…/delay` (ms), `…/timing-function` (STRING) |
+
+Member keys are kebab-cased (`timingFunction` → `timing-function`), and
+each member keeps its own `$type`, so an alias inside a composite resolves
+normally and keeps its alias edge. A member the source omits warns and
+becomes no variable. An alias to a *whole* composite is refused (D-16).
+
+Any remaining `$type` — `shadow`, `typography`, `gradient` — produces the
+warning `unsupported $type "<x>" (supported: color, dimension, number,
+text)` and the token is **skipped, never silently dropped**
 ([constitution.md](constitution.md) §3.2).
 
 ### 3.2 Value forms
@@ -155,17 +182,40 @@ Channels are clamped to `0–1`. A non-string colour value warns with
 | `"16px"` | `16` |
 | `"1rem"` | `16` |
 | `"1.5em"` | `24` |
+| `"150%"` | `1.5` (fraction, ADR-0016) |
+| `{ "value": 0.75, "unit": "rem" }` | `12` — the 2025.10 object form, ADR-0019 |
+| `"-{sizes.8}"` | `-8` — the target's literal, negated; no alias edge, D-14 |
 | `"2vw"`, `"12pt"`, `"auto"`, `calc(…)` | warning, token dropped |
 
 `1rem = 1em = 16px`, hard-coded, deliberately not user-configurable.
 `em` is treated as `rem` because Figma has no cascading element
-context. The accepted grammar is strict: no scientific notation, no
-percent, no `calc()`.
+context. The accepted grammar is otherwise strict: no scientific
+notation, no `calc()`, no arithmetic around an alias.
 
 **`number`** — a JSON number, or a string matching the strict numeric
-grammar (`-?\d*\.?\d+`, whitespace-trimmed). Anything else — including
-trailing garbage like `"12abc"` — warns with
+grammar (`-?\d*\.?\d+`, whitespace-trimmed), optionally suffixed with
+`%` for a fraction (`"0.12%"` → `0.0012`, D-11). Anything else —
+including trailing garbage like `"12abc"` — warns with
 `number value must be numeric or an alias` and drops the token.
+
+**`fontWeight`** — a number, a numeric string, or a DTCG keyword
+(`thin`/`hairline` 100 … `extra-black`/`ultra-black` 950). Anything else
+warns with `font weight must be a number or a DTCG keyword …`.
+
+**`duration`** — milliseconds: a number, `"175ms"`, `"0.2s"` (→ 200), or
+`{ "value": 175, "unit": "ms" }`. Anything else warns with
+`duration value must be a number of ms, a string with unit ms / s, or
+{value, unit}`.
+
+**`fontFamily`** — a string, or a font stack array whose **first**
+element is used (D-15). An alias inside a one-element stack is preserved
+for the resolver.
+
+**`strokeStyle`** / **`fontStyle`** — a string, or an alias. The
+`strokeStyle` object form (`dashArray`) is composite and warns.
+
+**`cubicBezier`** — four finite numbers, emitted as one STRING variable
+holding `cubic-bezier(x1, y1, x2, y2)`; anything else warns.
 
 ### 3.3 Aliases
 

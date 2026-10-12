@@ -1,4 +1,5 @@
 import { Fragment } from "react";
+import type { ParseWarning } from "../../shared/dtcg/types.js";
 import type { CollectionName, VariableOp, VariablePlan } from "../../shared/mapping/toFigma.js";
 import { CollectionIcon } from "./shared/icons.js";
 import { StatCards } from "./shared/StatCards.js";
@@ -10,9 +11,12 @@ const WARNING_PREVIEW = 8;
 export function StepPreview({
   plan,
   selectedCount,
+  warnings,
 }: {
   plan: VariablePlan;
   selectedCount: number;
+  /** Parse-stage plus plan-stage warnings for the selected files. */
+  warnings: ParseWarning[];
 }) {
   const totalModes = plan.collections.reduce((a, c) => a + c.modes.length, 0);
 
@@ -66,21 +70,62 @@ export function StepPreview({
           </Fragment>
         );
       })}
-      {plan.warnings.length > 0 ? (
-        <div className="warnings">
-          <div className="warnings-head">
-            {plan.warnings.length} parse warning{plan.warnings.length === 1 ? "" : "s"}
-          </div>
-          {plan.warnings.slice(0, WARNING_PREVIEW).map((pw, i) => (
-            <div key={i} className="warning-ln">
-              {pw.file} · {pw.path} — {pw.reason}
-            </div>
-          ))}
-          {plan.warnings.length > WARNING_PREVIEW ? (
-            <div className="warning-ln">…and {plan.warnings.length - WARNING_PREVIEW} more</div>
-          ) : null}
+      <WarningPanel list={warnings.filter((w) => w.level !== "notice")} />
+      <NoticePanel list={warnings.filter((w) => w.level === "notice")} />
+    </div>
+  );
+}
+
+/**
+ * Dropped tokens, per token: these are what the import will lose, so the
+ * name of every one of them matters.
+ */
+function WarningPanel({ list }: { list: ParseWarning[] }) {
+  if (list.length === 0) return null;
+  return (
+    <div className="warnings">
+      <div className="warnings-head">
+        {list.length} parse warning{list.length === 1 ? "" : "s"}
+      </div>
+      {list.slice(0, WARNING_PREVIEW).map((pw, i) => (
+        <div key={i} className="warning-ln">
+          {pw.file} · {pw.path} — {pw.reason}
         </div>
+      ))}
+      {list.length > WARNING_PREVIEW ? (
+        <div className="warning-ln">…and {list.length - WARNING_PREVIEW} more</div>
       ) : null}
+    </div>
+  );
+}
+
+/**
+ * Conversions and theme fills, one line per kind. Each token imported, so
+ * the interesting unit is the kind and its count — thirty near-identical
+ * lines say no more than two do. Per-token detail stays on the Step 4
+ * console, which keeps the constitution §3.2 promise that nothing is
+ * silent.
+ */
+function NoticePanel({ list }: { list: ParseWarning[] }) {
+  if (list.length === 0) return null;
+  const byKind = new Map<string, number>();
+  for (const w of list) {
+    const key = w.summary ?? w.reason;
+    byKind.set(key, (byKind.get(key) ?? 0) + 1);
+  }
+  return (
+    <div className="warnings notes">
+      <div className="warnings-head">
+        {list.length} notice{list.length === 1 ? "" : "s"}
+      </div>
+      {[...byKind]
+        .sort((a, b) => b[1] - a[1])
+        .map(([kind, n]) => (
+          <div key={kind} className="warning-ln">
+            {n}× {kind}
+          </div>
+        ))}
+      <div className="warning-ln">Per-token detail in the import console.</div>
     </div>
   );
 }

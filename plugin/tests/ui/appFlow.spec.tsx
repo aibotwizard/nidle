@@ -148,6 +148,62 @@ describe("App — upload → preview → import flow", () => {
     expect(warnBig.style.color).toBe("rgb(255, 139, 139)");
   });
 
+  it("separates step-3 notices from parse warnings (ADR-0020)", async () => {
+    renderApp();
+    // light/dark are a themed pair: `only` exists in Light alone, so Dark
+    // is filled — a notice. `bad` declares a composite type and is dropped
+    // — a warning.
+    const files = [
+      {
+        path: "semantic/light.json",
+        json: {
+          bg: { $type: "color", $value: "#FFFFFF" },
+          fg: { $type: "color", $value: "#000000" },
+          only: { $type: "color", $value: "#EEEEEE" },
+          only2: { $type: "color", $value: "#DDDDDD" },
+          only3: { $type: "color", $value: "#CCCCCC" },
+        },
+      },
+      {
+        path: "semantic/dark.json",
+        json: {
+          bg: { $type: "color", $value: "#000000" },
+          fg: { $type: "color", $value: "#FFFFFF" },
+        },
+      },
+      { path: "core/x.json", json: { bad: { $type: "shadow", $value: "0 0 1px" } } },
+    ].map((u) => {
+      const f = new File([JSON.stringify(u.json)], u.path.split("/").pop()!, {
+        type: "application/json",
+      });
+      Object.defineProperty(f, "webkitRelativePath", {
+        value: `tokens/${u.path}`,
+        configurable: true,
+      });
+      return f;
+    });
+
+    const input = document.querySelector<HTMLInputElement>('input[type="file"]')!;
+    fireEvent.change(input, { target: { files } });
+    await screen.findByText("3 files detected");
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    fireEvent.click(screen.getByRole("button", { name: "Preview import" }));
+
+    // The dropped token is the only thing counted as a parse warning…
+    expect(screen.getByText("1 parse warning")).toBeTruthy();
+    // …the three mode fills read as notices, in the muted panel.
+    expect(screen.getByText("3 notices")).toBeTruthy();
+    const notes = document.querySelector<HTMLElement>(".warnings.notes")!;
+    expect(notes.textContent).not.toContain("unsupported $type");
+
+    // One line per kind, not per token: three fills collapse into one.
+    const lines = Array.from(notes.querySelectorAll(".warning-ln"), (n) => n.textContent);
+    expect(lines).toEqual([
+      '3× tokens missing in mode "Dark" — filled from mode "Light"',
+      "Per-token detail in the import console.",
+    ]);
+  });
+
   it("surfaces a sandbox error on step 4", async () => {
     const { fake } = renderApp();
     await walkToImport(fake);

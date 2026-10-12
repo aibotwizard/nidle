@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { resolveTokens } from "../src/shared/dtcg/resolve.js";
-import type { Token } from "../src/shared/dtcg/types.js";
+import type { DtcgType, Token } from "../src/shared/dtcg/types.js";
 
 function t(
   name: string,
@@ -141,5 +141,58 @@ describe("resolveTokens — untyped alias tokens (spec §5.2.2 rule 1)", () => {
       file: "x.json",
       value: { kind: "literal", value: "#0D99FF" },
     });
+  });
+});
+
+describe("negated aliases resolve to a negative literal (D-14)", () => {
+  const tok = (name: string, type: DtcgType | null, value: string | number): Token => ({
+    name,
+    type,
+    value,
+    file: "t.json",
+  });
+
+  it("reads the target's literal and negates it, in either mode", () => {
+    for (const mode of ["keepAlias", "resolve"] as const) {
+      const r = resolveTokens(
+        [tok("sizes/8", "dimension", 8), tok("margin", "dimension", "-{sizes.8}")],
+        mode,
+      );
+      const margin = r.tokens.find((t) => t.name === "margin")!;
+      // No alias edge survives — Figma has no computed variables.
+      expect(margin.value, mode).toEqual({ kind: "literal", value: -8 });
+      expect(r.warnings, mode).toHaveLength(1);
+      expect(r.warnings[0]!.level, mode).toBe("notice");
+      expect(r.warnings[0]!.reason, mode).toContain("resolved to -8");
+    }
+  });
+
+  it("follows a chain to the literal before negating", () => {
+    const r = resolveTokens(
+      [
+        tok("sizes/8", "dimension", 8),
+        tok("space/s", "dimension", "{sizes.8}"),
+        tok("margin", "dimension", "-{space.s}"),
+      ],
+      "keepAlias",
+    );
+    expect(r.tokens.find((t) => t.name === "margin")!.value).toEqual({
+      kind: "literal",
+      value: -8,
+    });
+  });
+
+  it("warns and drops when the target is missing or not numeric", () => {
+    const missing = resolveTokens([tok("margin", "dimension", "-{nope}")], "keepAlias");
+    expect(missing.tokens).toEqual([]);
+    expect(missing.warnings[0]!.reason).toContain("does not match any token");
+    expect(missing.warnings[0]!.level).toBeUndefined();
+
+    const nonNumeric = resolveTokens(
+      [tok("brand", "text", "Grotesk"), tok("margin", "dimension", "-{brand}")],
+      "keepAlias",
+    );
+    expect(nonNumeric.tokens.map((t) => t.name)).toEqual(["brand"]);
+    expect(nonNumeric.warnings[0]!.reason).toContain("is not numeric");
   });
 });
