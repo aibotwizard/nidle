@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { fromUploads } from "../src/shared/intake/tokenIntake.js";
 import { DEFAULT_SETTINGS, planForFiles } from "../src/shared/mapping/toFigma.js";
@@ -111,6 +111,12 @@ const CORPORA: Corpus[] = [
 ];
 
 for (const corpus of CORPORA) {
+  // `assets/base` is not checked in, so it is absent on CI; skip it
+  // visibly instead of failing the whole file at collection time.
+  if (!existsSync(join(ROOT, corpus.dir))) {
+    it.skip(`assets/${corpus.dir} — full corpus coverage (corpus not present)`, () => {});
+    continue;
+  }
   describe(`assets/${corpus.dir} — full corpus coverage`, () => {
     const uploads = loadDir(join(ROOT, corpus.dir));
     const leaves = sourceLeaves(uploads);
