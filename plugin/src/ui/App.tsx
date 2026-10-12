@@ -60,15 +60,9 @@ export function App({
   );
 
   const handleIntake = async (intake: Promise<IntakeFiles>) => {
-    const { uploads, parseFailures } = await intake;
+    const { uploads, warnings: unreadable } = await intake;
     const { files: fileTokens, warnings } = fromUploads(uploads);
-
-    // An unreadable file loses every token in it — an error-level warning
-    // like any other drop.
-    const parseWarnings = [
-      ...warnings,
-      ...parseFailures.map((f) => ({ file: f.path, path: "(root)", reason: f.reason })),
-    ];
+    const parseWarnings = [...unreadable, ...warnings];
 
     const files: FileMeta[] = fileTokens.map((ft) => {
       const parts = ft.file.split("/");
@@ -85,7 +79,7 @@ export function App({
     dispatch({
       type: "importStarted",
       count: plan.variables.length,
-      diagnostics: diagnostics.consoleLines,
+      consoleLines: diagnostics.consoleLines,
     });
     transport.postCode({ type: "applyPlan", plan });
   };

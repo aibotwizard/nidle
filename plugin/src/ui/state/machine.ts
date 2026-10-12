@@ -66,7 +66,7 @@ export type Action =
   | { type: "filesLoaded"; files: FileMeta[]; parseWarnings: ParseWarning[] }
   | { type: "fileToggled"; path: string }
   | { type: "navigated"; to: 1 | 2 | 3 }
-  | { type: "importStarted"; count: number; diagnostics: LogLine[] }
+  | { type: "importStarted"; count: number; consoleLines: LogLine[] }
   | { type: "settingsChanged"; patch: StoredSettings }
   | { type: "sheetToggled"; open: boolean }
   | { type: "reset" };
@@ -112,7 +112,7 @@ export function reducer(state: State, action: Action): State {
         ...state,
         phase: { kind: "importing", progress: 0 },
         log: [
-          ...action.diagnostics,
+          ...action.consoleLines,
           { text: `Sending ${action.count} variables to Figma…`, tone: "dim" },
         ],
       };

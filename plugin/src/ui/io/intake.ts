@@ -1,3 +1,4 @@
+import type { ParseWarning } from "../../shared/dtcg/types.js";
 import type { RawUpload } from "../../shared/intake/types.js";
 
 /**
@@ -21,7 +22,8 @@ import type { RawUpload } from "../../shared/intake/types.js";
 
 export type IntakeFiles = {
   uploads: RawUpload[];
-  parseFailures: { path: string; reason: string }[];
+  /** Unreadable files: every token in them is lost, so error-level. */
+  warnings: ParseWarning[];
 };
 
 type PathedFile = { file: File; path: string };
@@ -101,16 +103,17 @@ async function parsePairs(pairs: PathedFile[]): Promise<IntakeFiles> {
   const texts = await Promise.all(json.map((p) => p.file.text()));
 
   const uploads: RawUpload[] = [];
-  const parseFailures: IntakeFiles["parseFailures"] = [];
+  const warnings: ParseWarning[] = [];
   json.forEach((p, i) => {
     try {
       uploads.push({ path: p.path, json: JSON.parse(texts[i]!) });
     } catch (e) {
-      parseFailures.push({
-        path: p.path,
+      warnings.push({
+        file: p.path,
+        path: "(root)",
         reason: `invalid JSON: ${e instanceof Error ? e.message : String(e)}`,
       });
     }
   });
-  return { uploads, parseFailures };
+  return { uploads, warnings };
 }

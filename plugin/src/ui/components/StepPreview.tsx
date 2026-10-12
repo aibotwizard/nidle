@@ -1,6 +1,5 @@
 import { Fragment } from "react";
-import type { ParseWarning } from "../../shared/dtcg/types.js";
-import type { Diagnostics } from "../state/diagnostics.js";
+import { warningLine, type Diagnostics } from "../state/diagnostics.js";
 import type { CollectionName, VariableOp, VariablePlan } from "../../shared/mapping/toFigma.js";
 import { CollectionIcon } from "./shared/icons.js";
 import { StatCards } from "./shared/StatCards.js";
@@ -80,7 +79,7 @@ export function StepPreview({
  * Dropped tokens, per token: these are what the import will lose, so the
  * name of every one of them matters.
  */
-function WarningPanel({ list }: { list: ParseWarning[] }) {
+function WarningPanel({ list }: { list: Diagnostics["dropped"] }) {
   if (list.length === 0) return null;
   return (
     <div className="warnings">
@@ -89,7 +88,7 @@ function WarningPanel({ list }: { list: ParseWarning[] }) {
       </div>
       {list.slice(0, WARNING_PREVIEW).map((pw, i) => (
         <div key={i} className="warning-ln">
-          {pw.file} · {pw.path} — {pw.reason}
+          {warningLine(pw)}
         </div>
       ))}
       {list.length > WARNING_PREVIEW ? (

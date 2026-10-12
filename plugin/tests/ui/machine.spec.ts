@@ -9,7 +9,7 @@ const err = (i: number): PlanError => ({
 });
 
 const importing = () =>
-  reducer(initialState, { type: "importStarted", count: 7, diagnostics: [] });
+  reducer(initialState, { type: "importStarted", count: 7, consoleLines: [] });
 
 describe("machine — done", () => {
   it("logs a success summary with tone ok when there are no errors", () => {
@@ -40,11 +40,11 @@ describe("machine — done", () => {
 });
 
 describe("machine — import lifecycle", () => {
-  it("importStarted seeds the log with the diagnostics ahead of the send line", () => {
+  it("importStarted seeds the log with the console lines ahead of the send line", () => {
     const warning = { text: "core/broken.json · (root) — invalid JSON", tone: "err" as const };
     const s = reducer(
       { ...initialState, log: [{ text: "old", tone: "dim" }] },
-      { type: "importStarted", count: 7, diagnostics: [warning] },
+      { type: "importStarted", count: 7, consoleLines: [warning] },
     );
     expect(s.phase).toEqual({ kind: "importing", progress: 0 });
     expect(stepOf(s.phase)).toBe(4);

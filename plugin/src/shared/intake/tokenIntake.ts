@@ -38,5 +38,5 @@ export function fromUploads(uploads: RawUpload[]): IntakeResult {
     tokens: tokensByFile.get(fu.path) ?? [],
   }));
 
-  return { files, warnings: [...notices, ...warnings], parseFailures: [] };
+  return { files, warnings: [...notices, ...warnings] };
 }

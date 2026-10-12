@@ -16,6 +16,9 @@ export type Diagnostics = {
   consoleLines: LogLine[];
 };
 
+/** The one per-token line format: Step 3 and the console render the same text. */
+export const warningLine = (w: ParseWarning): string => `${w.file} · ${w.path} — ${w.reason}`;
+
 /**
  * A warning counts when its file is selected, or when it names no loaded
  * file at all — an unreadable upload, or a Tokens Studio export whose
@@ -43,7 +46,7 @@ export function diagnose(
       .map(([kind, count]) => ({ kind, count }))
       .sort((a, b) => b.count - a.count),
     consoleLines: counted.map((w) => ({
-      text: `${w.file} · ${w.path} — ${w.reason}`,
+      text: warningLine(w),
       tone: w.level === "notice" ? "dim" : "err",
     })),
   };
