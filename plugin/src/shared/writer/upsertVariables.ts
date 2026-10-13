@@ -1,17 +1,11 @@
-import type { CollectionName, VariablePlan } from "../mapping/toFigma.js";
+import type { CollectionName, VariablePlan } from "../mapping/types.js";
 import type {
   FigmaApi,
   ResolvedCollection,
+  UpsertResult,
   VariableHandle,
   WriteError,
 } from "./types.js";
-
-export type UpsertResult = {
-  varByKey: Map<string, VariableHandle>;
-  created: number;
-  updated: number;
-  errors: WriteError[];
-};
 
 /**
  * Upsert each plan variable by (collection, name) per ADR-0004. Existing

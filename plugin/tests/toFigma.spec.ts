@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { parseFiles } from "../src/shared/dtcg/parse.js";
-import { collectionForFile, planForFiles, type ValueSpec } from "../src/shared/mapping/toFigma.js";
-import { DEFAULT_SETTINGS, type MappingSettings } from "../src/shared/settings.js";
+import { collectionForFile, planForFiles } from "../src/shared/mapping/toFigma.js";
+import type { ValueSpec } from "../src/shared/mapping/types.js";
+import { DEFAULT_SETTINGS } from "../src/shared/settings/defaults.js";
+import type { MappingSettings } from "../src/shared/settings/types.js";
 import type { FileTokens } from "../src/shared/intake/types.js";
 import { fromUploads } from "../src/shared/intake/tokenIntake.js";
 import type { RawUpload } from "../src/shared/intake/types.js";

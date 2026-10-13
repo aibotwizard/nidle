@@ -1,11 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { DEFAULT_SETTINGS } from "../src/shared/settings.js";
+import { DEFAULT_SETTINGS } from "../src/shared/settings/defaults.js";
 import {
   createInMemoryStorage,
   createPostMessageStorage,
   mergeWithDefaults,
 } from "../src/ui/io/settingsIO.js";
-import type { SandboxTransport } from "../src/ui/io/transport.js";
+import type { SandboxTransport } from "../src/ui/io/types.js";
 import type { ToCode, ToUI } from "../src/code/messages.js";
 
 describe("mergeWithDefaults", () => {

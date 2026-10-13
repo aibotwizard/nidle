@@ -1,20 +1,10 @@
 import type { StoredSettings } from "../../code/messages.js";
-import type { SandboxTransport } from "./transport.js";
+import type { SandboxTransport, SettingsStorage } from "./types.js";
 
 export type { StoredSettings };
 // The validator lives in shared/ so the sandbox applies the same
 // whitelist on its side of the boundary (req-0002 / FR-906).
-export { mergeWithDefaults } from "../../shared/settings.js";
-
-/**
- * Single-purpose port for persisting StoredSettings. The live adapter
- * round-trips through postMessage to figma.clientStorage; the in-memory
- * adapter is for tests.
- */
-export type SettingsStorage = {
-  load(): Promise<StoredSettings>;
-  save(settings: StoredSettings): Promise<void>;
-};
+export { mergeWithDefaults } from "../../shared/settings/defaults.js";
 
 /** A silent sandbox must not leave the UI waiting forever on boot. */
 const LOAD_TIMEOUT_MS = 2000;

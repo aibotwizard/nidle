@@ -7,7 +7,7 @@ import {
   fontWeightToNumber,
 } from "../src/shared/dtcg/parse.js";
 import { planForFiles } from "../src/shared/mapping/toFigma.js";
-import { DEFAULT_SETTINGS } from "../src/shared/settings.js";
+import { DEFAULT_SETTINGS } from "../src/shared/settings/defaults.js";
 import { fromUploads } from "../src/shared/intake/tokenIntake.js";
 import { loadFixtureUploads } from "./fixtures/loader.js";
 

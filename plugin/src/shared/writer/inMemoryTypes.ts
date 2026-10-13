@@ -1,4 +1,4 @@
-import type { CollectionName } from "../mapping/toFigma.js";
+import type { CollectionName } from "../mapping/types.js";
 import type { FigmaApi, FigmaValue, FigmaVarType } from "./types.js";
 
 export type MemCollection = {

@@ -1,11 +1,10 @@
 import type { ReactNode } from "react";
-import type { MappingSettings } from "../../shared/settings.js";
-import { basenameMode, type ThemeGroup } from "../../shared/mapping/toFigma.js";
+import type { MappingSettings } from "../../shared/settings/types.js";
+import { basenameMode } from "../../shared/mapping/toFigma.js";
+import type { ThemedGroup } from "../../shared/mapping/types.js";
 import { CloseIcon } from "./shared/icons.js";
 import { Segmented } from "./shared/Segmented.js";
 import { Toggle } from "./shared/Toggle.js";
-
-export type ThemedGroup = Extract<ThemeGroup, { kind: "themed" }>;
 
 function SettingsRow({
   title,

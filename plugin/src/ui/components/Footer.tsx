@@ -1,4 +1,4 @@
-import type { Phase } from "../state/machine.js";
+import type { Phase } from "../state/types.js";
 
 export function Footer({
   phase,

@@ -1,4 +1,4 @@
-import type { CollectionName } from "../shared/mapping/toFigma.js";
+import type { CollectionName } from "../shared/mapping/types.js";
 import type {
   ExistingCollection,
   ExistingVariable,

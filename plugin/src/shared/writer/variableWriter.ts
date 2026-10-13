@@ -1,4 +1,4 @@
-import type { VariablePlan } from "../mapping/toFigma.js";
+import type { VariablePlan } from "../mapping/types.js";
 import { setupCollections } from "./setupCollections.js";
 import { upsertVariables } from "./upsertVariables.js";
 import { writeValues } from "./writeValues.js";

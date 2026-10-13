@@ -1,4 +1,4 @@
-import type { CollectionName } from "../mapping/toFigma.js";
+import type { CollectionName } from "../mapping/types.js";
 
 export type FigmaVarType = "COLOR" | "FLOAT" | "STRING";
 
@@ -94,4 +94,11 @@ export type ResolvedCollection = {
   modeIds: Map<string, string>;
   /** Mode names the plan requested but could not be added (e.g. Figma plan limit). */
   skippedModes: Set<string>;
+};
+
+export type UpsertResult = {
+  varByKey: Map<string, VariableHandle>;
+  created: number;
+  updated: number;
+  errors: WriteError[];
 };

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { parseFiles } from "../src/shared/dtcg/parse.js";
 import { planForFiles } from "../src/shared/mapping/toFigma.js";
-import { DEFAULT_SETTINGS } from "../src/shared/settings.js";
+import { DEFAULT_SETTINGS } from "../src/shared/settings/defaults.js";
 import { write } from "../src/shared/writer/variableWriter.js";
 import { createInMemoryFigmaApi } from "../src/shared/writer/inMemoryFigmaApi.js";
 import type { WriteProgress } from "../src/shared/writer/types.js";

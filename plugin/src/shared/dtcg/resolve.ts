@@ -1,25 +1,11 @@
 import { aliasName, isAliasValue, negatedAliasOf } from "./alias.js";
-import type { DtcgType, ParseWarning, Token } from "./types.js";
-
-export type ResolveMode = "keepAlias" | "resolve";
-
-/** Either a literal value or an unresolved alias pointing at another token. */
-export type ResolvedValue =
-  | { kind: "literal"; value: string | number }
-  | { kind: "alias"; targetName: string };
-
-export type ResolvedToken = {
-  name: string;
-  /** Always concrete: an untyped token has taken its target's type. */
-  type: DtcgType;
-  file: string;
-  value: ResolvedValue;
-};
-
-export type ResolveResult = {
-  tokens: ResolvedToken[];
-  warnings: ParseWarning[];
-};
+import type {
+  ParseWarning,
+  ResolveMode,
+  ResolveResult,
+  ResolvedToken,
+  Token,
+} from "./types.js";
 
 /**
  * Resolve `{a.b.c}` alias references across the parsed token set.

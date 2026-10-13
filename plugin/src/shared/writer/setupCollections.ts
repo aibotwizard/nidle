@@ -1,4 +1,4 @@
-import type { CollectionName, VariablePlan } from "../mapping/toFigma.js";
+import type { CollectionName, VariablePlan } from "../mapping/types.js";
 import type {
   FigmaApi,
   ResolvedCollection,

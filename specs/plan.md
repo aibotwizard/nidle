@@ -93,19 +93,25 @@ plugin/
       index.css
       main.tsx          # entry: builds io singletons, mounts <App/>
       App.tsx           # wiring only: reducer + effects + step switch
-      state/            # machine.ts — Phase union + settings + reducer (Action ⊇ ToUI)
+      state/            # machine.ts — reducer (Action ⊇ ToUI)
                         # diagnostics.ts — warning scope/severity/grouping (ADR-0022)
+                        # types.ts — Phase union, State, Action, Diagnostics
       io/               # transport (postMessage multiplexer), settingsIO
-                        # (storage port + adapters + validation), intake
+                        # (storage adapters + validation), intake
                         # (picker + drop producers; owns the path contract)
+                        # types.ts — SandboxTransport, SettingsStorage, IntakeFiles
       components/       # TitleBar, Stepper, Step*, Footer, SettingsSheet, shared/
     shared/
       dtcg/
         parse.ts        # DTCG file → flat Token[]
         resolve.ts      # alias resolution (keepAlias | resolve)
-        types.ts        # DTCG $type union, Token, ParseResult
+        types.ts        # DTCG $type union, Token, ParseResult, ResolvedToken
       mapping/
         toFigma.ts      # tokens → CollectionPlan[] + VariableOp[] + ThemeGroup[]
+        types.ts        # VariablePlan, VariableOp, ValueSpec, ThemeGroup
+      settings/
+        types.ts        # MappingSettings, Separator
+        defaults.ts     # DEFAULT_SETTINGS + mergeWithDefaults (both sides of postMessage)
   tests/
     fixtures/
       m1-primitives/

@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useReducer } from "react";
-import type { MappingSettings } from "../shared/settings.js";
+import type { MappingSettings } from "../shared/settings/types.js";
 import type { FileTokens } from "../shared/intake/types.js";
 import { planForFiles } from "../shared/mapping/toFigma.js";
 import { fromUploads } from "../shared/intake/tokenIntake.js";
-import type { SandboxTransport } from "./io/transport.js";
-import { mergeWithDefaults, type SettingsStorage } from "./io/settingsIO.js";
-import { fromDrop, fromPicker, type IntakeFiles } from "./io/intake.js";
+import type { IntakeFiles, SandboxTransport, SettingsStorage } from "./io/types.js";
+import { mergeWithDefaults } from "./io/settingsIO.js";
+import { fromDrop, fromPicker } from "./io/intake.js";
 import { initialState, reducer, stepOf } from "./state/machine.js";
 import { diagnose } from "./state/diagnostics.js";
 import { TitleBar } from "./components/TitleBar.js";
@@ -15,7 +15,8 @@ import { StepSource } from "./components/StepSource.js";
 import { StepSets } from "./components/StepSets.js";
 import { StepPreview } from "./components/StepPreview.js";
 import { StepImport } from "./components/StepImport.js";
-import { SettingsSheet, type ThemedGroup } from "./components/SettingsSheet.js";
+import { SettingsSheet } from "./components/SettingsSheet.js";
+import type { ThemedGroup } from "../shared/mapping/types.js";
 
 export function App({
   transport,

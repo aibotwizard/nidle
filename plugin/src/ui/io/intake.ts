@@ -1,5 +1,6 @@
 import type { ParseWarning } from "../../shared/dtcg/types.js";
 import type { RawUpload } from "../../shared/intake/types.js";
+import type { IntakeFiles } from "./types.js";
 
 /**
  * File intake for both browser sources, and the single owner of the
@@ -19,12 +20,6 @@ import type { RawUpload } from "../../shared/intake/types.js";
  * Consequence: dropping folder X and picking folder X produce identical
  * paths, at any directory depth.
  */
-
-export type IntakeFiles = {
-  uploads: RawUpload[];
-  /** Unreadable files: every token in them is lost, so error-level. */
-  warnings: ParseWarning[];
-};
 
 type PathedFile = { file: File; path: string };
 

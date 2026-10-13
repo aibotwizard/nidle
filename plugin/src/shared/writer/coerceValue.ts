@@ -1,5 +1,5 @@
 import { parseColor } from "./color.js";
-import type { ValueSpec, VariableOp } from "../mapping/toFigma.js";
+import type { ValueSpec, VariableOp } from "../mapping/types.js";
 import type { FigmaValue, VariableHandle } from "./types.js";
 
 /**

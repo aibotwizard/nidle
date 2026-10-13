@@ -1,20 +1,5 @@
 import type { ParseWarning } from "../../shared/dtcg/types.js";
-import type { LogLine } from "./machine.js";
-
-/**
- * What the user is told about everything the import converts or loses —
- * the single owner of severity, file scope and grouping for every stage's
- * warnings (ADR-0022). Step 3, the Step 4 console and the Step 4 stat all
- * read from here, so they cannot disagree.
- */
-export type Diagnostics = {
-  /** Error-level: the import loses these. Listed per token on Step 3. */
-  dropped: ParseWarning[];
-  /** Notices collapsed to one line per kind, most frequent first. */
-  notices: { kind: string; count: number }[];
-  /** Every counted warning, per token — the Step 4 console seed. */
-  consoleLines: LogLine[];
-};
+import type { Diagnostics } from "./types.js";
 
 /** The one per-token line format: Step 3 and the console render the same text. */
 export const warningLine = (w: ParseWarning): string => `${w.file} · ${w.path} — ${w.reason}`;

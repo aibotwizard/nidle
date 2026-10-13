@@ -1,5 +1,5 @@
 import { useRef, useState, type DragEvent } from "react";
-import type { FileMeta } from "../state/machine.js";
+import type { FileMeta } from "../state/types.js";
 import { DetectedCheckIcon, UploadIcon, UploadIconLarge } from "./shared/icons.js";
 
 export function StepSource({

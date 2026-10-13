@@ -1,16 +1,5 @@
 import type { ToCode, ToUI } from "../../code/messages.js";
-
-export type ToUIHandler = (msg: ToUI) => void;
-
-/**
- * Two-way bus between the UI and the sandbox, and the sole owner of the
- * iframe's `window.message` listener. Subscribers each get every message
- * until they unsubscribe.
- */
-export type SandboxTransport = {
-  postCode(msg: ToCode): void;
-  addMessageListener(handler: ToUIHandler): () => void;
-};
+import type { SandboxTransport, ToUIHandler } from "./types.js";
 
 export function createSandboxTransport(): SandboxTransport {
   const handlers = new Set<ToUIHandler>();

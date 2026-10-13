@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { App } from "../../src/ui/App.js";
 import { createInMemoryStorage } from "../../src/ui/io/settingsIO.js";
-import type { SandboxTransport } from "../../src/ui/io/transport.js";
+import type { SandboxTransport } from "../../src/ui/io/types.js";
 import type { ToCode, ToUI } from "../../src/code/messages.js";
 import { loadFixtureUploads } from "../fixtures/loader.js";
 

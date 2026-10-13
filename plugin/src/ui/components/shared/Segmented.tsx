@@ -1,4 +1,4 @@
-export type SegmentedOption = { id: string; label: string };
+type SegmentedOption = { id: string; label: string };
 
 export function Segmented({
   options,

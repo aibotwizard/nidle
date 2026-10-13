@@ -1,4 +1,4 @@
-import type { VariablePlan } from "../shared/mapping/toFigma.js";
+import type { VariablePlan } from "../shared/mapping/types.js";
 import type { LogTone, WriteError } from "../shared/writer/types.js";
 
 /**
@@ -13,7 +13,7 @@ export type PlanError = WriteError;
  * modules.
  */
 export type StoredSettings = Partial<
-  import("../shared/settings.js").MappingSettings
+  import("../shared/settings/types.js").MappingSettings
 >;
 
 export type ToCode =

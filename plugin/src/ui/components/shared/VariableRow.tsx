@@ -1,5 +1,5 @@
 import { Fragment } from "react";
-import type { ModeValue, ValueSpec, VariableOp } from "../../../shared/mapping/toFigma.js";
+import type { ModeValue, ValueSpec, VariableOp } from "../../../shared/mapping/types.js";
 
 function RowIcon({
   type,

@@ -1,6 +1,7 @@
 import { Fragment } from "react";
-import { warningLine, type Diagnostics } from "../state/diagnostics.js";
-import type { CollectionName, VariableOp, VariablePlan } from "../../shared/mapping/toFigma.js";
+import { warningLine } from "../state/diagnostics.js";
+import type { Diagnostics } from "../state/types.js";
+import type { CollectionName, VariableOp, VariablePlan } from "../../shared/mapping/types.js";
 import { CollectionIcon } from "./shared/icons.js";
 import { StatCards } from "./shared/StatCards.js";
 import { VariableRow } from "./shared/VariableRow.js";

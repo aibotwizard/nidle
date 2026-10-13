@@ -1,5 +1,5 @@
 import { Fragment } from "react";
-import type { Step } from "../state/machine.js";
+import type { Step } from "../state/types.js";
 import { StepCheckIcon } from "./shared/icons.js";
 
 const LABELS = ["Source", "Sets", "Preview", "Import"];
