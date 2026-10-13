@@ -61,6 +61,23 @@ describe("machine — import lifecycle", () => {
     expect(second.parseWarnings).toEqual([w2]);
   });
 
+  it("filesLoaded derives name, folder and sort order from the file paths", () => {
+    const s = reducer(initialState, {
+      type: "filesLoaded",
+      files: [
+        { file: "semantic/dark.json", tokens: [] },
+        { file: "flat.json", tokens: [] },
+        { file: "core/color.json", tokens: [] },
+      ],
+      parseWarnings: [],
+    });
+    expect(s.files.map((f) => [f.path, f.folder, f.name, f.selected])).toEqual([
+      ["flat.json", "(root)", "flat.json", true],
+      ["core/color.json", "core", "color.json", true],
+      ["semantic/dark.json", "semantic", "dark.json", true],
+    ]);
+  });
+
   it("progress updates only while importing", () => {
     const s = reducer(importing(), { type: "progress", pct: 40, line: "…", tone: "dim" });
     expect(s.phase).toEqual({ kind: "importing", progress: 40 });

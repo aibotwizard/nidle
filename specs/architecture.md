@@ -10,7 +10,9 @@ strain.
 
 [plan.md](plan.md) is the milestone-by-milestone implementation plan.
 This document is the standing reference for the shape of the system —
-read it before moving code across a stage boundary.
+read it before moving code across a stage boundary. The same system
+drawn level by level (context → containers → components → code) is in
+[c4/](c4/c1-system-context.md).
 
 ---
 

@@ -1,77 +1,82 @@
-import type { Step } from "../state/machine.js";
+import type { Phase } from "../state/machine.js";
 
 export function Footer({
-  step,
+  phase,
   filesCount,
   selectedCount,
   planVarCount,
-  importing,
-  done,
-  onBack,
-  onNext,
+  onNavigate,
   onStartImport,
   onReset,
   onClose,
 }: {
-  step: Step;
+  phase: Phase;
   filesCount: number;
   selectedCount: number;
   planVarCount: number;
-  importing: boolean;
-  done: boolean;
-  onBack: () => void;
-  onNext: () => void;
+  onNavigate: (to: 1 | 2 | 3) => void;
   onStartImport: () => void;
   onReset: () => void;
   onClose: () => void;
 }) {
-  if (step < 4) {
-    const primary =
-      step === 1
-        ? { label: "Continue", disabled: filesCount === 0, onClick: onNext }
-        : step === 2
-          ? { label: "Preview import", disabled: selectedCount === 0, onClick: onNext }
-          : {
-              label: `Import ${planVarCount} variables`,
-              disabled: planVarCount === 0,
-              onClick: onStartImport,
-            };
-    return (
-      <div className="footer">
-        {step === 2 || step === 3 ? (
-          <button className="btn" onClick={onBack}>
+  switch (phase.kind) {
+    case "source":
+      return (
+        <div className="footer">
+          <div className="spacer" />
+          <button className="btn primary" disabled={filesCount === 0} onClick={() => onNavigate(2)}>
+            Continue
+          </button>
+        </div>
+      );
+    case "sets":
+      return (
+        <div className="footer">
+          <button className="btn" onClick={() => onNavigate(1)}>
             Back
           </button>
-        ) : null}
-        <div className="spacer" />
-        {step === 2 ? <span className="selcount">{selectedCount} sets selected</span> : null}
-        <button className="btn primary" disabled={primary.disabled} onClick={primary.onClick}>
-          {primary.label}
-        </button>
-      </div>
-    );
+          <div className="spacer" />
+          <span className="selcount">{selectedCount} sets selected</span>
+          <button
+            className="btn primary"
+            disabled={selectedCount === 0}
+            onClick={() => onNavigate(3)}
+          >
+            Preview import
+          </button>
+        </div>
+      );
+    case "preview":
+      return (
+        <div className="footer">
+          <button className="btn" onClick={() => onNavigate(2)}>
+            Back
+          </button>
+          <div className="spacer" />
+          <button className="btn primary" disabled={planVarCount === 0} onClick={onStartImport}>
+            Import {planVarCount} variables
+          </button>
+        </div>
+      );
+    case "importing":
+      return (
+        <div className="footer">
+          <div className="spacer" />
+          <div className="info">Importing… please keep the plugin open</div>
+          <div className="spacer" />
+        </div>
+      );
+    case "done":
+      return (
+        <div className="footer">
+          <button className="btn" onClick={onReset}>
+            Import another
+          </button>
+          <div className="spacer" />
+          <button className="btn primary" onClick={onClose}>
+            Close
+          </button>
+        </div>
+      );
   }
-  if (importing) {
-    return (
-      <div className="footer">
-        <div className="spacer" />
-        <div className="info">Importing… please keep the plugin open</div>
-        <div className="spacer" />
-      </div>
-    );
-  }
-  if (done) {
-    return (
-      <div className="footer">
-        <button className="btn" onClick={onReset}>
-          Import another
-        </button>
-        <div className="spacer" />
-        <button className="btn primary" onClick={onClose}>
-          Close
-        </button>
-      </div>
-    );
-  }
-  return <div className="footer" />;
 }

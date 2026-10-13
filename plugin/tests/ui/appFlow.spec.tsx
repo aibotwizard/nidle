@@ -79,6 +79,11 @@ describe("App — upload → preview → import flow", () => {
     expect(screen.getByText("dimension.json")).toBeTruthy();
     expect(screen.getByText("2 sets selected")).toBeTruthy();
 
+    // Back returns to the source step and Continue comes forward again.
+    fireEvent.click(screen.getByRole("button", { name: "Back" }));
+    expect(screen.getByText("2 files detected")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+
     // Deselecting a file updates the count; reselect to proceed with both.
     fireEvent.click(screen.getByText("dimension.json"));
     expect(screen.getByText("1 sets selected")).toBeTruthy();
@@ -89,6 +94,11 @@ describe("App — upload → preview → import flow", () => {
     expect(screen.getByText("Variables")).toBeTruthy();
     expect(screen.getByText("Primitives")).toBeTruthy();
     expect(screen.getByText("color/blue/500")).toBeTruthy();
+
+    // Back from the preview lands on the sets step.
+    fireEvent.click(screen.getByRole("button", { name: "Back" }));
+    expect(screen.getByText("2 sets selected")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Preview import" }));
 
     // Step 4: the plan crosses the transport, progress + done stream back.
     fireEvent.click(screen.getByRole("button", { name: "Import 6 variables" }));

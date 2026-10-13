@@ -4,7 +4,7 @@ import { fromUploads } from "../shared/intake/tokenIntake.js";
 import type { SandboxTransport } from "./io/transport.js";
 import { mergeWithDefaults, type SettingsStorage } from "./io/settingsIO.js";
 import { fromDrop, fromPicker, type IntakeFiles } from "./io/intake.js";
-import { initialState, reducer, stepOf, type FileMeta } from "./state/machine.js";
+import { initialState, reducer, stepOf } from "./state/machine.js";
 import { diagnose } from "./state/diagnostics.js";
 import { TitleBar } from "./components/TitleBar.js";
 import { Stepper } from "./components/Stepper.js";
@@ -38,13 +38,6 @@ export function App({
     };
   }, [storage]);
 
-  const step = stepOf(state.phase);
-  const importing = state.phase.kind === "importing";
-  const done = state.phase.kind === "done";
-  const progress =
-    state.phase.kind === "importing" ? state.phase.progress : done ? 100 : 0;
-  const result = state.phase.kind === "done" ? state.phase.result : undefined;
-
   const selectedCount = state.files.filter((f) => f.selected).length;
 
   const plan = useMemo(() => {
@@ -61,18 +54,8 @@ export function App({
 
   const handleIntake = async (intake: Promise<IntakeFiles>) => {
     const { uploads, warnings: unreadable } = await intake;
-    const { files: fileTokens, warnings } = fromUploads(uploads);
-    const parseWarnings = [...unreadable, ...warnings];
-
-    const files: FileMeta[] = fileTokens.map((ft) => {
-      const parts = ft.file.split("/");
-      const name = parts[parts.length - 1]!;
-      const folder = parts.length > 1 ? parts.slice(0, -1).join("/") : "(root)";
-      return { path: ft.file, name, folder, tokens: ft.tokens, selected: true };
-    });
-    files.sort((a, b) => (a.folder + a.name).localeCompare(b.folder + b.name));
-
-    dispatch({ type: "filesLoaded", files, parseWarnings });
+    const { files, warnings } = fromUploads(uploads);
+    dispatch({ type: "filesLoaded", files, parseWarnings: [...unreadable, ...warnings] });
   };
 
   const handleStartImport = () => {
@@ -101,20 +84,20 @@ export function App({
         onOpenSettings={() => dispatch({ type: "sheetToggled", open: true })}
         onClose={() => transport.postCode({ type: "close" })}
       />
-      <Stepper step={step} />
+      <Stepper step={stepOf(state.phase)} />
       <div className="content scroll">
-        {step === 1 ? (
+        {state.phase.kind === "source" ? (
           <StepSource
             files={state.files}
             onFilesPicked={(l) => void handleIntake(fromPicker(l))}
             onDropTransfer={(dt) => void handleIntake(fromDrop(dt))}
           />
-        ) : step === 2 ? (
+        ) : state.phase.kind === "sets" ? (
           <StepSets
             files={state.files}
             onToggleFile={(path) => dispatch({ type: "fileToggled", path })}
           />
-        ) : step === 3 ? (
+        ) : state.phase.kind === "preview" ? (
           <StepPreview
             plan={plan}
             selectedCount={selectedCount}
@@ -122,24 +105,18 @@ export function App({
           />
         ) : (
           <StepImport
-            importing={importing}
-            done={done}
-            progress={progress}
-            result={result}
+            phase={state.phase}
             warnings={diagnostics.dropped.length}
             log={state.log}
           />
         )}
       </div>
       <Footer
-        step={step}
+        phase={state.phase}
         filesCount={state.files.length}
         selectedCount={selectedCount}
         planVarCount={plan.variables.length}
-        importing={importing}
-        done={done}
-        onBack={() => dispatch({ type: "navigated", to: (step - 1) as 1 | 2 })}
-        onNext={() => dispatch({ type: "navigated", to: (step + 1) as 2 | 3 })}
+        onNavigate={(to) => dispatch({ type: "navigated", to })}
         onStartImport={handleStartImport}
         onReset={() => dispatch({ type: "reset" })}
         onClose={() => transport.postCode({ type: "close" })}

@@ -1,37 +1,32 @@
-import type { ImportResult, LogLine } from "../state/machine.js";
+import type { ImportPhase, LogLine } from "../state/machine.js";
 import { DoneCheckIcon, SpinnerIcon } from "./shared/icons.js";
 import { ConsoleLog } from "./shared/ConsoleLog.js";
 
 export function StepImport({
-  importing,
-  done,
-  progress,
-  result,
+  phase,
   warnings,
   log,
 }: {
-  importing: boolean;
-  done: boolean;
-  progress: number;
-  result: ImportResult | undefined;
+  phase: ImportPhase;
   warnings: number;
   log: LogLine[];
 }) {
+  const result = phase.kind === "done" ? phase.result : undefined;
   const errors = result?.errors.length ?? 0;
   return (
     <div className="step-pad">
-      {importing ? (
+      {phase.kind === "importing" ? (
         <>
           <div className="run-center">
             <div className="run-spinner">{SpinnerIcon}</div>
             <div className="run-title">Creating variables…</div>
-            <div className="run-pct">{progress}% complete</div>
+            <div className="run-pct">{phase.progress}% complete</div>
           </div>
           <div className="progressbar">
-            <div className="fill" style={{ width: `${progress}%` }} />
+            <div className="fill" style={{ width: `${phase.progress}%` }} />
           </div>
         </>
-      ) : done ? (
+      ) : (
         <>
           <div className="done-center">
             <div className="done-icon">{DoneCheckIcon}</div>
@@ -81,7 +76,7 @@ export function StepImport({
             </div>
           </div>
         </>
-      ) : null}
+      )}
       <div className="console-label">CONSOLE</div>
       <ConsoleLog log={log} />
     </div>
